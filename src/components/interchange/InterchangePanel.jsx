@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import PromptPreview from "./PromptPreview.jsx";
 import ContextPackagePanel from "./ContextPackagePanel.jsx";
 import ResponsePaste from "./ResponsePaste.jsx";
+import FinalDocumentPanel from "./FinalDocumentPanel.jsx";
 
 /**
  * Right-hand "AI interchange" panel.
@@ -28,7 +29,11 @@ import ResponsePaste from "./ResponsePaste.jsx";
  *   onInstructionReset  - () => void, restores the default instruction
  *   onSubmitResponse - (rawText) => boolean (true when the response was accepted)
  *   validationErrors - string[] describing why the last paste was rejected
- *   isComplete       - true once the conversation has terminated; pasting is disabled
+ *   isComplete       - true once the conversation has terminated; the final document step is shown instead of the JSON paste area
+ *   finalPrompt      - prompt asking the AI for the final Markdown document
+ *   documentMarkdown - the pasted Markdown document ("" if none yet)
+ *   onSubmitDocument - (markdown) => boolean, true when the document was accepted
+ *   onClearDocument  - () => void, discards the pasted document
  */
 export default function InterchangePanel({
   prompt = "",
@@ -43,6 +48,10 @@ export default function InterchangePanel({
   onSubmitResponse,
   validationErrors = [],
   isComplete = false,
+  finalPrompt = "",
+  documentMarkdown = "",
+  onSubmitDocument,
+  onClearDocument,
 }) {
   const [promptOpen, setPromptOpen] = useState(true);
 
@@ -94,9 +103,12 @@ export default function InterchangePanel({
         <hr className="interchange-divider" />
 
         {isComplete ? (
-          <p className="interchange-complete" role="status">
-            This conversation is complete. No further responses are accepted.
-          </p>
+          <FinalDocumentPanel
+            finalPrompt={finalPrompt}
+            documentMarkdown={documentMarkdown}
+            onSubmitDocument={onSubmitDocument}
+            onClearDocument={onClearDocument}
+          />
         ) : (
           <ResponsePaste onSubmit={onSubmitResponse} errors={validationErrors} />
         )}

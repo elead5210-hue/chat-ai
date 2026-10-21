@@ -34,13 +34,13 @@
       "feature_id": null,
       "title": "Give the chat a defined end point",
       "summary": "The chat must terminate on its own rather than continue in a never-ending loop, with a clear point at which the conversation is considered complete.",
-      "detail": "{\"planState\":\"tasks_created\",\"planPromptText\":\"Goal: Give the chat a defined end point\\nDescription: The chat must terminate on its own rather than continue in a never-ending loop, with a clear point at which the conversation is considered complete.\\n\\nBelow is the current file tree for this project: one path per line,\\nfollowed by a short content fingerprint (format:\\nL<byte length>:H<8-char hash> - see shared/fingerprint.js if you’ve\\nseen this project before). No file contents are included here.\\n\\nPlan the set of file changes needed to implement the goal above.\\nRespond with ONLY this JSON object, no other text before or after it:\\n{\\n  \\\"tasks\\\": [\\n    {\\n      \\\"path\\\": \\\"components/example/example.js\\\",\\n      \\\"action\\\": \\\"create\\\" | \\\"modify\\\" | \\\"delete\\\",\\n      \\\"description\\\": \\\"one-line description of the change\\\",\\n      \\\"needsFileContent\\\": true,\\n      \\\"needsMetadata\\\": false,\\n      \\\"confident\\\": true\\n    }\\n  ]\\n}\\n\\n- needsFileContent: true unless this task is a plain delete with\\n  nothing else to write.\\n- needsMetadata: true only if this task needs you to author extra\\n  structured data beyond the file’s content (leave false if unsure).\\n- confident: for \\\"modify\\\"/\\\"delete\\\" tasks, whether your memory of\\n  that file’s current content matches the fingerprint shown above.\\n  Always true for \\\"create\\\" tasks (there’s nothing to remember yet).\\n\\nCurrent file tree:\\ndocs/nexus-protocol.md  L11399:Hd9de465d\\nindex.html  L291:Hab4a212e\\ninit.md  L10:H5b173971\\npackage.json  L486:H4f82c8e8\\nsrc/App.jsx  L1627:H2594f0c5\\nsrc/components/conversation/ConversationPanel.jsx  L3245:H0a9ab152\\nsrc/components/interchange/ContextPackagePanel.jsx  L4013:Hc7c87740\\nsrc/components/interchange/InterchangePanel.jsx  L3630:H6f5f0fb1\\nsrc/components/interchange/PromptPreview.jsx  L3672:Hefeec1c8\\nsrc/components/interchange/ResponsePaste.jsx  L2722:H066f72af\\nsrc/components/layout/layout.test.jsx  L9015:H8480c90c\\nsrc/components/layout/SessionMenu.jsx  L1765:Hda2ff7d7\\nsrc/components/registry/componentRegistry.js  L3655:Hf5a2cef7\\nsrc/components/registry/componentRegistry.test.js  L9622:Hfd25091e\\nsrc/components/registry/coreComponents.js  L5911:H6d28b7a5\\nsrc/components/renderer/ComponentRenderer.jsx  L1107:H5a19d29a\\nsrc/components/renderer/ComponentRenderer.test.jsx  L8394:Hdfa0eb06\\nsrc/components/renderer/fields.jsx  L8255:Hcc0fde93\\nsrc/components/renderer/SchemaForm.jsx  L1019:H355d5ff2\\nsrc/components/renderer/schemaLoop.test.jsx  L23457:H2e12d050\\nsrc/context/contextFingerprint.js  L4791:H21276843\\nsrc/context/contextFingerprint.test.js  L18942:Hd9d54719\\nsrc/context/contextPackage.js  L4256:Hc6342bd4\\nsrc/context/contextPackage.test.js  L19133:H73c044ec\\nsrc/context/contextSnapshot.js  L7876:H50389334\\nsrc/context/contextSnapshot.test.js  L9852:H109af69c\\nsrc/main.jsx  L240:H1971c3c3\\nsrc/prompt/componentCatalog.js  L2770:Hde775322\\nsrc/prompt/componentCatalog.test.js  L4300:H3e2bb193\\nsrc/prompt/generatePrompt.js  L5289:H613c54fe\\nsrc/prompt/generatePrompt.test.js  L16063:Hc58ad8c4\\nsrc/protocol/schema.js  L7851:H49faabd6\\nsrc/protocol/schema.test.js  L13362:Hd3005fe9\\nsrc/protocol/validateResponse.js  L9844:H6d471534\\nsrc/protocol/validateResponse.test.js  L19930:H10d80a1b\\nsrc/state/conversationStore.js  L2775:Hab0c1f0f\\nsrc/state/conversationStore.test.js  L10433:Ha121f33c\\nsrc/state/promptInput.js  L1893:H525065f1\\nsrc/state/promptInput.test.js  L12939:H604e7b2e\\nsrc/state/uiStateStore.js  L4610:H67d56e0d\\nsrc/state/uiStateStore.test.js  L15571:He86355f1\\nsrc/state/useSession.js  L4726:H61fdb111\\nsrc/state/useSession.test.jsx  L16496:Habc80507\\nsrc/styles/app.css  L9317:H4851c463\\nvite.config.js  L217:H7d4cc606\"}",
+      "detail": "{\"planState\":\"tasks_created\",\"planPromptText\":\"Goal: Give the chat a defined end point\\nDescription: The chat must terminate on its own rather than continue in a never-ending loop, with a clear point at which the conversation is considered complete.\\n\\nBelow is the current file tree for this project: one path per line,\\nfollowed by a short content fingerprint (format:\\nL<byte length>:H<8-char hash> - see shared/fingerprint.js if you’ve\\nseen this project before). No file contents are included here.\\n\\nPlan the set of file changes needed to implement the goal above.\\nRespond with ONLY this JSON object, no other text before or after it:\\n{\\n  \\\"tasks\\\": [\\n    {\\n      \\\"path\\\": \\\"components/example/example.js\\\",\\n      \\\"action\\\": \\\"create\\\" | \\\"modify\\\" | \\\"delete\\\",\\n      \\\"description\\\": \\\"one-line description of the change\\\",\\n      \\\"needsFileContent\\\": true,\\n      \\\"needsMetadata\\\": false,\\n      \\\"confident\\\": true\\n    }\\n  ]\\n}\\n\\n- needsFileContent: true unless this task is a plain delete with\\n  nothing else to write.\\n- needsMetadata: true only if this task needs you to author extra\\n  structured data beyond the file’s content (leave false if unsure).\\n- confident: for \\\"modify\\\"/\\\"delete\\\" tasks, whether your memory of\\n  that file’s current content matches the fingerprint shown above.\\n  Always true for \\\"create\\\" tasks (there’s nothing to remember yet).\\n\\nCurrent file tree:\\ndocs/nexus-protocol.md  L11399:Hd9de465d\\nindex.html  L291:Hab4a212e\\ninit.md  L10:H5b173971\\npackage.json  L486:H4f82c8e8\\nsrc/App.jsx  L1627:H2594f0c5\\nsrc/components/conversation/ConversationPanel.jsx  L3245:H0a9ab152\\nsrc/components/interchange/ContextPackagePanel.jsx  L4013:Hc7c87740\\nsrc/components/interchange/InterchangePanel.jsx  L3630:H6f5f0fb1\\nsrc/components/interchange/PromptPreview.jsx  L3672:Hefeec1c8\\nsrc/components/interchange/ResponsePaste.jsx  L2722:H066f72af\\nsrc/components/layout/layout.test.jsx  L9015:H8480c90c\\nsrc/components/layout/SessionMenu.jsx  L1765:Hda2ff7d7\\nsrc/components/registry/componentRegistry.js  L3655:Hf5a2cef7\\nsrc/components/registry/componentRegistry.test.js  L9622:Hfd25091e\\nsrc/components/registry/coreComponents.js  L5911:H6d28b7a5\\nsrc/components/renderer/ComponentRenderer.jsx  L1107:H5a19d29a\\nsrc/components/renderer/ComponentRenderer.test.jsx  L8394:Hdfa0eb06\\nsrc/components/renderer/fields.jsx  L8255:Hcc0fde93\\nsrc/components/renderer/SchemaForm.jsx  L1019:H355d5ff2\\nsrc/components/renderer/schemaLoop.test.jsx  L23457:H2e12d050\\nsrc/context/contextFingerprint.js  L4791:H21276843\\nsrc/context/contextFingerprint.test.js  L18942:Hd9d54719\\nsrc/context/contextPackage.js  L4256:Hc6342bd4\\nsrc/context/contextPackage.test.js  L19133:H73c044ec\\nsrc/context/contextSnapshot.js  L7876:H50389334\\nsrc/context/contextSnapshot.test.js  L9852:H109af69c\\nsrc/main.jsx  L240:H1971c3c3\\nsrc/prompt/componentCatalog.js  L2770:Hde775322\\nsrc/prompt/componentCatalog.test.js  L4300:H3e2bb193\\nsrc/prompt/generatePrompt.js  L5289:H613c54fe\\nsrc/prompt/generatePrompt.test.js  L16063:Hc58ad8c4\\nsrc/protocol/schema.js  L7851:H49faabd6\\nsrc/protocol/schema.test.js  L13362:Hd3005fe9\\nsrc/protocol/validateResponse.js  L9844:H6d471534\\nsrc/protocol/validateResponse.test.js  L19930:H10d80a1b\\nsrc/state/conversationStore.js  L2775:Hab0c1f0f\\nsrc/state/conversationStore.test.js  L10433:Ha121f33c\\nsrc/state/promptInput.js  L1893:H525065f1\\nsrc/state/promptInput.test.js  L12939:H604e7b2e\\nsrc/state/uiStateStore.js  L4610:H67d56e0d\\nsrc/state/uiStateStore.test.js  L15571:He86355f1\\nsrc/state/useSession.js  L4726:H61fdb111\\nsrc/state/useSession.test.jsx  L16496:Habc80507\\nsrc/styles/app.css  L9317:H4851c463\\nvite.config.js  L217:H7d4cc606\",\"pushOutcome\":{\"status\":\"pushed\",\"sha\":\"9c3cb1aa8e3b411b1dc51fa36c5817f093ed1594\",\"at\":\"2026-10-21T10:16:19.768Z\"}}",
       "linked_element_ids": [],
       "finalized": false,
       "blocked_by": [],
       "notes": "",
       "createdAt": "2026-10-21T10:08:57.240Z",
-      "updatedAt": "2026-10-21T10:11:48.209Z"
+      "updatedAt": "2026-10-21T10:16:19.806Z"
     },
     {
       "roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
@@ -54,13 +54,13 @@
       "feature_id": null,
       "title": "Final prompt generates a Markdown document",
       "summary": "The last prompt sent to the AI is an instruction to generate a .md document. The user pastes this in as the final step, and the document then renders and can be saved as a PDF or printed.",
-      "detail": "",
+      "detail": "{\"planState\":\"tasks_created\",\"planPromptText\":\"Goal: Final prompt generates a Markdown document\\nDescription: The last prompt sent to the AI is an instruction to generate a .md document. The user pastes this in as the final step, and the document then renders and can be saved as a PDF or printed.\\n\\nBelow is the current file tree for this project: one path per line,\\nfollowed by a short content fingerprint (format:\\nL<byte length>:H<8-char hash> - see shared/fingerprint.js if you’ve\\nseen this project before). No file contents are included here.\\n\\nPlan the set of file changes needed to implement the goal above.\\nRespond with ONLY this JSON object, no other text before or after it:\\n{\\n  \\\"tasks\\\": [\\n    {\\n      \\\"path\\\": \\\"components/example/example.js\\\",\\n      \\\"action\\\": \\\"create\\\" | \\\"modify\\\" | \\\"delete\\\",\\n      \\\"description\\\": \\\"one-line description of the change\\\",\\n      \\\"needsFileContent\\\": true,\\n      \\\"needsMetadata\\\": false,\\n      \\\"confident\\\": true\\n    }\\n  ]\\n}\\n\\n- needsFileContent: true unless this task is a plain delete with\\n  nothing else to write.\\n- needsMetadata: true only if this task needs you to author extra\\n  structured data beyond the file’s content (leave false if unsure).\\n- confident: for \\\"modify\\\"/\\\"delete\\\" tasks, whether your memory of\\n  that file’s current content matches the fingerprint shown above.\\n  Always true for \\\"create\\\" tasks (there’s nothing to remember yet).\\n\\nCurrent file tree:\\ndocs/nexus-protocol.md  L11399:Hd9de465d\\nindex.html  L291:Hab4a212e\\ninit.md  L10:H5b173971\\npackage.json  L486:H4f82c8e8\\nsrc/App.jsx  L1627:H2594f0c5\\nsrc/components/conversation/ConversationPanel.jsx  L3702:Ha1ed6b88\\nsrc/components/interchange/ContextPackagePanel.jsx  L4013:Hc7c87740\\nsrc/components/interchange/InterchangePanel.jsx  L3944:H10baaef9\\nsrc/components/interchange/PromptPreview.jsx  L3672:Hefeec1c8\\nsrc/components/interchange/ResponsePaste.jsx  L2722:H066f72af\\nsrc/components/layout/layout.test.jsx  L9015:H8480c90c\\nsrc/components/layout/SessionMenu.jsx  L1765:Hda2ff7d7\\nsrc/components/registry/componentRegistry.js  L3655:Hf5a2cef7\\nsrc/components/registry/componentRegistry.test.js  L9622:Hfd25091e\\nsrc/components/registry/coreComponents.js  L5911:H6d28b7a5\\nsrc/components/renderer/ComponentRenderer.jsx  L1107:H5a19d29a\\nsrc/components/renderer/ComponentRenderer.test.jsx  L8394:Hdfa0eb06\\nsrc/components/renderer/fields.jsx  L8255:Hcc0fde93\\nsrc/components/renderer/SchemaForm.jsx  L1019:H355d5ff2\\nsrc/components/renderer/schemaLoop.test.jsx  L23457:H2e12d050\\nsrc/context/contextFingerprint.js  L4791:H21276843\\nsrc/context/contextFingerprint.test.js  L18942:Hd9d54719\\nsrc/context/contextPackage.js  L4256:Hc6342bd4\\nsrc/context/contextPackage.test.js  L19133:H73c044ec\\nsrc/context/contextSnapshot.js  L7876:H50389334\\nsrc/context/contextSnapshot.test.js  L9852:H109af69c\\nsrc/main.jsx  L240:H1971c3c3\\nsrc/prompt/componentCatalog.js  L2770:Hde775322\\nsrc/prompt/componentCatalog.test.js  L4300:H3e2bb193\\nsrc/prompt/generatePrompt.js  L5557:H6d8ddb49\\nsrc/prompt/generatePrompt.test.js  L16063:Hc58ad8c4\\nsrc/protocol/schema.js  L8817:H6380b0a9\\nsrc/protocol/schema.test.js  L13362:Hd3005fe9\\nsrc/protocol/validateResponse.js  L10108:H243ab5cf\\nsrc/protocol/validateResponse.test.js  L21394:H64b3485e\\nsrc/state/conversationStore.js  L4214:H932eb6e7\\nsrc/state/conversationStore.test.js  L13004:Hfaadb2f9\\nsrc/state/promptInput.js  L1893:H525065f1\\nsrc/state/promptInput.test.js  L12939:H604e7b2e\\nsrc/state/uiStateStore.js  L4610:H67d56e0d\\nsrc/state/uiStateStore.test.js  L15571:He86355f1\\nsrc/state/useSession.js  L5505:H53de67ce\\nsrc/state/useSession.test.jsx  L16496:Habc80507\\nsrc/styles/app.css  L9977:H134cfee9\\nvite.config.js  L217:H7d4cc606\"}",
       "linked_element_ids": [],
       "finalized": false,
       "blocked_by": [],
       "notes": "",
       "createdAt": "2026-10-21T10:08:57.240Z",
-      "updatedAt": "2026-10-21T10:08:57.240Z"
+      "updatedAt": "2026-10-21T10:16:50.841Z"
     },
     {
       "roadmap_node_id": "rmn_e554c5bf82b766910a461993",
@@ -143,6 +143,26 @@
       "updatedAt": "2026-10-21T10:12:50.989Z"
     },
     {
+      "roadmap_node_id": "rmn_b438252cd0b4e582b7298a67",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 0,
+      "feature_id": null,
+      "title": "src/prompt/generateFinalDocumentPrompt.js",
+      "summary": "Build the final prompt that instructs the AI to return the finished document as a Markdown (.md) document, using the conversation and context package",
+      "detail": "{\"fileChangeMode\":\"write-file\",\"action\":\"create\",\"description\":\"Build the final prompt that instructs the AI to return the finished document as a Markdown (.md) document, using the conversation and context package\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.041Z",
+      "updatedAt": "2026-10-21T10:17:45.546Z"
+    },
+    {
       "roadmap_node_id": "rmn_7e601a3d1f5f7f37495d8db4",
       "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
       "parent_roadmap_node_id": "rmn_c2b1a70121a5f8ca09579546",
@@ -161,6 +181,26 @@
       "notes": "",
       "createdAt": "2026-10-21T10:11:47.464Z",
       "updatedAt": "2026-10-21T10:13:11.846Z"
+    },
+    {
+      "roadmap_node_id": "rmn_8cd145dd802e22b09837d8bd",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 1,
+      "feature_id": null,
+      "title": "src/components/document/DocumentPreview.jsx",
+      "summary": "Render pasted Markdown as a formatted document with Save as PDF / Print buttons (window.print)",
+      "detail": "{\"fileChangeMode\":\"write-file\",\"action\":\"create\",\"description\":\"Render pasted Markdown as a formatted document with Save as PDF / Print buttons (window.print)\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.150Z",
+      "updatedAt": "2026-10-21T10:18:00.522Z"
     },
     {
       "roadmap_node_id": "rmn_bbeb92289366ac6759756929",
@@ -183,6 +223,26 @@
       "updatedAt": "2026-10-21T10:13:32.410Z"
     },
     {
+      "roadmap_node_id": "rmn_875746f5307cb4da40caed8d",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 2,
+      "feature_id": null,
+      "title": "src/components/document/markdownToHtml.js",
+      "summary": "Minimal safe Markdown-to-HTML renderer (escapes HTML, supports headings, lists, emphasis, code, links, tables) so no new dependency is needed",
+      "detail": "{\"fileChangeMode\":\"write-file\",\"action\":\"create\",\"description\":\"Minimal safe Markdown-to-HTML renderer (escapes HTML, supports headings, lists, emphasis, code, links, tables) so no new dependency is needed\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.240Z",
+      "updatedAt": "2026-10-21T10:18:25.858Z"
+    },
+    {
       "roadmap_node_id": "rmn_2f6e9f47ab6e686f45dfafdd",
       "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
       "parent_roadmap_node_id": "rmn_c2b1a70121a5f8ca09579546",
@@ -201,6 +261,26 @@
       "notes": "",
       "createdAt": "2026-10-21T10:11:47.636Z",
       "updatedAt": "2026-10-21T10:13:52.510Z"
+    },
+    {
+      "roadmap_node_id": "rmn_db547bfca82cd387b478c6b3",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 3,
+      "feature_id": null,
+      "title": "src/components/interchange/FinalDocumentPanel.jsx",
+      "summary": "Final-step panel: shows the copyable final prompt and a paste area for the returned Markdown, then shows the rendered document",
+      "detail": "{\"fileChangeMode\":\"write-file\",\"action\":\"create\",\"description\":\"Final-step panel: shows the copyable final prompt and a paste area for the returned Markdown, then shows the rendered document\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.329Z",
+      "updatedAt": "2026-10-21T10:18:45.517Z"
     },
     {
       "roadmap_node_id": "rmn_eea58a42efd33937845d3ddd",
@@ -223,6 +303,26 @@
       "updatedAt": "2026-10-21T10:14:13.130Z"
     },
     {
+      "roadmap_node_id": "rmn_d3568e37c729b794654731ed",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 4,
+      "feature_id": null,
+      "title": "src/components/interchange/InterchangePanel.jsx",
+      "summary": "When the conversation is complete, show the FinalDocumentPanel instead of the JSON response paste area",
+      "detail": "{\"fileChangeMode\":\"patch\",\"action\":\"modify\",\"description\":\"When the conversation is complete, show the FinalDocumentPanel instead of the JSON response paste area\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.425Z",
+      "updatedAt": "2026-10-21T10:18:59.131Z"
+    },
+    {
       "roadmap_node_id": "rmn_2adfa5c675df07b1be49f464",
       "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
       "parent_roadmap_node_id": "rmn_c2b1a70121a5f8ca09579546",
@@ -241,6 +341,26 @@
       "notes": "",
       "createdAt": "2026-10-21T10:11:47.795Z",
       "updatedAt": "2026-10-21T10:14:29.903Z"
+    },
+    {
+      "roadmap_node_id": "rmn_1ed2368c284f0d654bb77a41",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 5,
+      "feature_id": null,
+      "title": "src/state/useSession.js",
+      "summary": "Expose the final document prompt and store/submit/clear the returned Markdown document",
+      "detail": "{\"fileChangeMode\":\"patch\",\"action\":\"modify\",\"description\":\"Expose the final document prompt and store/submit/clear the returned Markdown document\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.499Z",
+      "updatedAt": "2026-10-21T10:19:14.838Z"
     },
     {
       "roadmap_node_id": "rmn_0e3c42c7f3a6a5daef5d051f",
@@ -263,6 +383,26 @@
       "updatedAt": "2026-10-21T10:14:47.951Z"
     },
     {
+      "roadmap_node_id": "rmn_281ca17053e24e3493bce4d9",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 6,
+      "feature_id": null,
+      "title": "src/App.jsx",
+      "summary": "Wire the final prompt, document state and handlers from useSession into the interchange panel and render the document",
+      "detail": "{\"fileChangeMode\":\"patch\",\"action\":\"modify\",\"description\":\"Wire the final prompt, document state and handlers from useSession into the interchange panel and render the document\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.565Z",
+      "updatedAt": "2026-10-21T10:19:28.604Z"
+    },
+    {
       "roadmap_node_id": "rmn_16300df782cf97c6cb3fb20f",
       "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
       "parent_roadmap_node_id": "rmn_c2b1a70121a5f8ca09579546",
@@ -281,6 +421,26 @@
       "notes": "",
       "createdAt": "2026-10-21T10:11:47.963Z",
       "updatedAt": "2026-10-21T10:15:03.964Z"
+    },
+    {
+      "roadmap_node_id": "rmn_ed9442431f086ec18b91af73",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 7,
+      "feature_id": null,
+      "title": "src/styles/app.css",
+      "summary": "Add styles for the rendered document and print styles so only the document prints and can be saved as PDF",
+      "detail": "{\"fileChangeMode\":\"patch\",\"action\":\"modify\",\"description\":\"Add styles for the rendered document and print styles so only the document prints and can be saved as PDF\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.642Z",
+      "updatedAt": "2026-10-21T10:19:47.170Z"
     },
     {
       "roadmap_node_id": "rmn_a0b7be7434a79316d078db5d",
@@ -303,6 +463,26 @@
       "updatedAt": "2026-10-21T10:15:26.130Z"
     },
     {
+      "roadmap_node_id": "rmn_ff1ee79f53e73e2a4ff109fc",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 8,
+      "feature_id": null,
+      "title": "src/prompt/generateFinalDocumentPrompt.test.js",
+      "summary": "Tests that the final prompt asks for a Markdown document and includes the context and conversation",
+      "detail": "{\"fileChangeMode\":\"write-file\",\"action\":\"create\",\"description\":\"Tests that the final prompt asks for a Markdown document and includes the context and conversation\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.716Z",
+      "updatedAt": "2026-10-21T10:20:10.090Z"
+    },
+    {
       "roadmap_node_id": "rmn_b314e56b9e987e6c6e18b7a9",
       "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
       "parent_roadmap_node_id": "rmn_c2b1a70121a5f8ca09579546",
@@ -321,6 +501,26 @@
       "notes": "",
       "createdAt": "2026-10-21T10:11:48.129Z",
       "updatedAt": "2026-10-21T10:15:43.208Z"
+    },
+    {
+      "roadmap_node_id": "rmn_e4da7ca15bbfe776e907afc1",
+      "project_id": "0fce2a27-f61e-48d2-aafb-5db382977af3",
+      "parent_roadmap_node_id": "rmn_75d2a27eb3e22744af22f971",
+      "type": "task",
+      "depth": 2,
+      "locked": false,
+      "status": "done",
+      "order": 9,
+      "feature_id": null,
+      "title": "src/components/document/markdownToHtml.test.js",
+      "summary": "Tests for Markdown rendering and HTML escaping",
+      "detail": "{\"fileChangeMode\":\"write-file\",\"action\":\"create\",\"description\":\"Tests for Markdown rendering and HTML escaping\",\"needsFileContent\":true,\"needsMetadata\":false,\"confident\":true,\"fileStatus\":\"done\",\"metadataStatus\":\"not_needed\",\"metadata\":null}",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-21T10:16:50.778Z",
+      "updatedAt": "2026-10-21T10:20:41.146Z"
     }
   ]
 }

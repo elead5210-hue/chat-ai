@@ -1,6 +1,7 @@
 import React from "react";
 import ConversationPanel from "./components/conversation/ConversationPanel.jsx";
 import InterchangePanel from "./components/interchange/InterchangePanel.jsx";
+import DocumentPreview from "./components/document/DocumentPreview.jsx";
 import SessionMenu from "./components/layout/SessionMenu.jsx";
 import { useSession } from "./state/useSession.js";
 
@@ -24,6 +25,7 @@ export default function App() {
           lastResponse={session.lastResponse}
           uiState={session.uiState}
           onUiStateChange={session.updateUiState}
+          isComplete={session.isComplete}
         />
 
         <InterchangePanel
@@ -38,8 +40,20 @@ export default function App() {
           onInstructionReset={session.resetInstruction}
           onSubmitResponse={session.submitResponse}
           validationErrors={session.validationErrors}
+          isComplete={session.isComplete}
+          finalPrompt={session.finalPrompt}
+          documentMarkdown={session.documentMarkdown}
+          onSubmitDocument={session.submitDocument}
+          onClearDocument={session.clearDocument}
         />
       </main>
+
+      {session.isComplete && session.documentMarkdown.trim() !== "" && (
+        <DocumentPreview
+          markdown={session.documentMarkdown}
+          onClear={session.clearDocument}
+        />
+      )}
     </div>
   );
 }

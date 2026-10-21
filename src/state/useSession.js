@@ -5,6 +5,7 @@ import {
   generatePrompt,
   generatePromptSections,
 } from "../prompt/generatePrompt.js";
+import { generateFinalDocumentPrompt } from "../prompt/generateFinalDocumentPrompt.js";
 import { validateResponse } from "../protocol/validateResponse.js";
 import {
   applyContextUpdates,
@@ -43,6 +44,8 @@ export function useSession() {
   const [instruction, setInstruction] = useState(DEFAULT_INSTRUCTION);
   const [lastResponse, setLastResponse] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
+  // The final Markdown document pasted in after the conversation is complete.
+  const [documentMarkdown, setDocumentMarkdown] = useState("");
   const lastResponseRef = useRef(null);
 
   // The one place the three stores meet.
@@ -64,6 +67,11 @@ export function useSession() {
     () => generateContinuationPrompt(buildContinuationInput({ messages, context })),
     [context, messages]
   );
+  // The last prompt of the session: asks the AI for the final Markdown document.
+  const finalPrompt = useMemo(
+    () => generateFinalDocumentPrompt({ context, messages }),
+    [context, messages]
+  );
 
   const sendUserMessage = useCallback((text) => {
     setMessages((current) => appendUserMessage(current, text));
@@ -72,6 +80,22 @@ export function useSession() {
   /** Mark the conversation as finished so the chat terminates. */
   const finishConversation = useCallback(() => {
     setMessages((current) => completeConversation(current));
+  }, []);
+
+  /** Accept the Markdown document returned by the AI. Returns true on success. */
+  const submitDocument = useCallback(
+    (markdown) => {
+      if (!isComplete) return false;
+      if (typeof markdown !== "string" || markdown.trim() === "") return false;
+      setDocumentMarkdown(markdown);
+      return true;
+    },
+    [isComplete]
+  );
+
+  /** Discard the pasted document so another can be pasted. */
+  const clearDocument = useCallback(() => {
+    setDocumentMarkdown("");
   }, []);
 
   const updateUiState = useCallback((id, value) => {
@@ -132,6 +156,7 @@ export function useSession() {
     setLastResponse(null);
     lastResponseRef.current = null;
     setValidationErrors([]);
+    setDocumentMarkdown("");
   }, []);
 
   return {
@@ -149,6 +174,10 @@ export function useSession() {
     continuationPrompt,
     conversationStatus,
     isComplete,
+    finalPrompt,
+    documentMarkdown,
+    submitDocument,
+    clearDocument,
     sendUserMessage,
     finishConversation,
     updateUiState,
