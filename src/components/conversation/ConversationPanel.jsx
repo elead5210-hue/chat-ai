@@ -1,0 +1,103 @@
+import React, { useEffect, useRef, useState } from "react";
+import SchemaForm from "../renderer/SchemaForm.jsx";
+import { isNexusMessage } from "../../state/conversationStore.js";
+
+/**
+ * Chat-style conversation panel: message list plus a user input box.
+ *
+ * Props supplied by App.jsx:
+ *   messages        - [{ id, role, content }]
+ *   onSend          - (text) => void
+ *   lastResponse    - last validated AI response (may be null)
+ *   uiState         - values the user has entered into generated fields
+ *   onUiStateChange - (id, value) => void
+ *
+ * Nexus is the interface, not the AI: its own lines (the welcome message) are
+ * labelled "Nexus", and replies the user pasted in from the external AI are
+ * labelled "AI via Nexus".
+ *
+ * The AI's declarative components (from lastResponse) are rendered beneath the
+ * message list by SchemaForm. Values the user enters are saved to UI state via
+ * onUiStateChange and fed into the next generated prompt.
+ */
+export default function ConversationPanel({
+  messages = [],
+  onSend,
+  lastResponse = null,
+  uiState = {},
+  onUiStateChange,
+}) {
+  const [draft, setDraft] = useState("");
+  const endRef = useRef(null);
+
+  useEffect(() => {
+    if (endRef.current && typeof endRef.current.scrollIntoView === "function") {
+      endRef.current.scrollIntoView({ block: "end" });
+    }
+  }, [messages.length, lastResponse]);
+
+  function submit() {
+    const text = draft.trim();
+    if (!text) return;
+    onSend?.(text);
+    setDraft("");
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submit();
+    }
+  }
+
+  return (
+    <section
+      className="panel conversation-panel"
+      data-area="conversation"
+      aria-label="Conversation"
+    >
+      <h2 className="panel-title">Conversation</h2>
+
+      <div className="panel-body message-scroll">
+        <ul className="message-list" aria-live="polite">
+          {messages.map((message) => {
+            const isUser = message.role === "user";
+            const isNexus = isNexusMessage(message);
+            const author = isUser ? "You" : isNexus ? "Nexus" : "AI via Nexus";
+            const variant = isUser
+              ? "message-user"
+              : isNexus
+                ? "message-assistant message-nexus"
+                : "message-assistant message-ai";
+            return (
+              <li key={message.id} className={`message ${variant}`}>
+                <span className="message-author">{author}</span>
+                {message.content}
+              </li>
+            );
+          })}
+        </ul>
+        <SchemaForm
+          components={lastResponse?.components ?? []}
+          uiState={uiState}
+          onChange={onUiStateChange}
+        />
+        <div ref={endRef} />
+      </div>
+
+      <div className="chat-input chat-input-pinned">
+        <textarea
+          rows={2}
+          value={draft}
+          placeholder="Type your response..."
+          aria-label="Your message"
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <button type="button" onClick={submit} disabled={draft.trim() === ""}>
+          Send
+        </button>
+      </div>
+    </section>
+  );
+}
