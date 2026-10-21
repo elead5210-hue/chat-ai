@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useSession } from "./useSession.js";
 import { PROTOCOL_NAME, PROTOCOL_VERSION } from "../protocol/schema.js";
+import { createSnapshot } from "../context/contextSnapshot.js";
+import { WELCOME_MESSAGE } from "./conversationStore.js";
+import { createSessionSnapshot } from "../storage/sessionSnapshot.js";
 
 function makeResponse(overrides = {}) {
   return {
@@ -678,5 +681,394 @@ describe("resetSession clears each store", () => {
 
     // "destination" was not part of the new session's previous form, so it is kept.
     expect(result.current.uiState.destination).toBe("Lisbon");
+  });
+});
+
+describe("persistence with a storage", () => {
+  /** In-memory stand-in for the IndexedDB storage: { load, save, clear }. */
+  function createMemoryStorage(initial = null) {
+    const storage = {
+      data: initial,
+      loadCalls: 0,
+      saveCalls: 0,
+      clearCalls: 0,
+      async load() {
+        storage.loadCalls += 1;
+        return storage.data;
+      },
+      async save(snapshot) {
+        storage.saveCalls += 1;
+        storage.data = snapshot;
+        return true;
+      },
+      async clear() {
+        storage.clearCalls += 1;
+        storage.data = null;
+        return true;
+      },
+    };
+    return storage;
+  }
+
+  // The storage object must stay the same between renders, so it is created
+  // outside the hook callback.
+  function setupWithStorage(storage) {
+    const hook = renderHook(() => useSession(storage));
+    return hook;
+  }
+
+  async function setupLoaded(storage) {
+    const hook = setupWithStorage(storage);
+    await waitFor(() => expect(hook.result.current.isLoaded).toBe(true));
+    return hook;
+  }
+
+  function savedSession(overrides = {}) {
+    return createSessionSnapshot({
+      messages: [
+        { id: WELCOME_MESSAGE.id, role: "assistant", content: WELCOME_MESSAGE.content },
+        { id: "m9999", role: "user", content: "Saved-marker-message" },
+      ],
+      context: { ...createSnapshot(), context_version: 3, summary: "Saved-marker-summary" },
+      uiState: { destination: "Saved-marker-value" },
+      instruction: "Saved instruction",
+      checklist: [
+        { id: "audience", label: "Who the document is for", satisfied: true },
+        { id: "scope", label: "What the document covers", satisfied: false },
+      ],
+      documentMarkdown: "",
+      ...overrides,
+    });
+  }
+
+  describe("restoring on mount", () => {
+    it("is not loaded until the saved session has been read", async () => {
+      const storage = createMemoryStorage(savedSession());
+      const { result } = setupWithStorage(storage);
+
+      expect(result.current.isLoaded).toBe(false);
+
+      await waitFor(() => expect(result.current.isLoaded).toBe(true));
+      expect(storage.loadCalls).toBe(1);
+    });
+
+    it("restores messages, context, UI state, instruction and checklist", async () => {
+      const { result } = await setupLoaded(createMemoryStorage(savedSession()));
+
+      expect(result.current.messages.map((message) => message.content)).toContain(
+        "Saved-marker-message"
+      );
+      expect(result.current.context.summary).toBe("Saved-marker-summary");
+      expect(result.current.context.context_version).toBe(3);
+      expect(result.current.uiState.destination).toBe("Saved-marker-value");
+      expect(result.current.instruction).toBe("Saved instruction");
+      expect(result.current.checklist.map((item) => item.satisfied)).toEqual([true, false]);
+    });
+
+    it("uses the restored data in the next prompt", async () => {
+      const { result } = await setupLoaded(createMemoryStorage(savedSession()));
+
+      expect(result.current.prompt).toContain("Saved-marker-message");
+      expect(result.current.prompt).toContain("Saved-marker-summary");
+      expect(result.current.prompt).toContain("Saved-marker-value");
+    });
+
+    it("restores the pasted document and the completed state", async () => {
+      const storage = createMemoryStorage(
+        savedSession({
+          messages: [
+            { id: WELCOME_MESSAGE.id, role: "assistant", content: WELCOME_MESSAGE.content },
+            { id: "complete", role: "assistant", content: "All done." },
+          ],
+          documentMarkdown: "# Saved document",
+        })
+      );
+      const { result } = await setupLoaded(storage);
+
+      expect(result.current.documentMarkdown).toBe("# Saved document");
+      expect(result.current.isComplete).toBe(true);
+    });
+
+    it("does not reuse a restored message id for a new message", async () => {
+      const { result } = await setupLoaded(createMemoryStorage(savedSession()));
+
+      act(() => result.current.sendUserMessage("A new message"));
+
+      const ids = result.current.messages.map((message) => message.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(result.current.messages.at(-1).id).not.toBe("m9999");
+    });
+
+    it("starts a fresh session when nothing was saved", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+
+      expect(result.current.messages).toHaveLength(1);
+      expect(result.current.context.summary).toBe("");
+      expect(result.current.uiState).toEqual({});
+      expect(result.current.checklist).toEqual([]);
+    });
+
+    it("starts a fresh session when the saved data is malformed", async () => {
+      const storage = createMemoryStorage({ version: 1, messages: "nope" });
+      const { result } = await setupLoaded(storage);
+
+      expect(result.current.messages).toHaveLength(1);
+      expect(result.current.context.summary).toBe("");
+    });
+
+    it("starts a fresh session when the saved data is from another version", async () => {
+      const storage = createMemoryStorage({ ...savedSession(), version: 999 });
+      const { result } = await setupLoaded(storage);
+
+      expect(result.current.messages).toHaveLength(1);
+      expect(result.current.context.summary).toBe("");
+    });
+
+    it("still becomes loaded when reading the saved session fails", async () => {
+      const storage = createMemoryStorage();
+      storage.load = async () => {
+        throw new Error("read failed");
+      };
+      const { result } = await setupLoaded(storage);
+
+      expect(result.current.messages).toHaveLength(1);
+      expect(result.current.isLoaded).toBe(true);
+    });
+  });
+
+  describe("saving after changes", () => {
+    it("does not save a blank session", async () => {
+      const storage = createMemoryStorage(null);
+      await setupLoaded(storage);
+
+      expect(storage.saveCalls).toBe(0);
+      expect(storage.data).toBeNull();
+    });
+
+    it("saves the conversation after the user sends a message", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+
+      act(() => result.current.sendUserMessage("Persisted-marker-message"));
+
+      await waitFor(() => expect(storage.data).not.toBeNull());
+      expect(JSON.stringify(storage.data.messages)).toContain("Persisted-marker-message");
+    });
+
+    it("saves context, UI state and the last response after a response", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+
+      submit(
+        result,
+        makeResponse({
+          message: { role: "assistant", content: "Where to?" },
+          context_updates: [{ key: "summary", value: "Persisted-marker-summary" }],
+          state_updates: [{ id: "destination", value: "Persisted-marker-value" }],
+        })
+      );
+
+      await waitFor(() => expect(storage.data?.context.summary).toBe("Persisted-marker-summary"));
+      expect(storage.data.uiState.destination).toBe("Persisted-marker-value");
+      expect(storage.data.lastResponse.message.content).toBe("Where to?");
+      expect(JSON.stringify(storage.data.messages)).toContain("Where to?");
+    });
+
+    it("saves a field edit", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+
+      act(() => result.current.updateUiState("budget", 4321));
+
+      await waitFor(() => expect(storage.data?.uiState.budget).toBe(4321));
+    });
+
+    it("saves an edited instruction", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+
+      act(() => result.current.updateInstruction("Persisted instruction"));
+
+      await waitFor(() => expect(storage.data?.instruction).toBe("Persisted instruction"));
+    });
+
+    it("saves the checklist and its updates", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+
+      submit(
+        result,
+        makeResponse({
+          phase_complete: true,
+          checklist: [
+            { id: "audience", label: "Who the document is for" },
+            { id: "scope", label: "What the document covers" },
+          ],
+        })
+      );
+      await waitFor(() => expect(storage.data?.checklist).toHaveLength(2));
+
+      submit(result, makeResponse({ checklist_updates: [{ id: "audience", satisfied: true }] }));
+      await waitFor(() =>
+        expect(storage.data.checklist.map((item) => item.satisfied)).toEqual([true, false])
+      );
+    });
+
+    it("saves the pasted document", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+      submit(result, makeResponse({ conversation_complete: true, next_action: "complete" }));
+
+      act(() => {
+        result.current.submitDocument("# Persisted document");
+      });
+
+      await waitFor(() => expect(storage.data?.documentMarkdown).toBe("# Persisted document"));
+    });
+
+    it("does not save before the saved session has been restored", async () => {
+      const storage = createMemoryStorage(savedSession());
+      const { result } = setupWithStorage(storage);
+
+      // Changes made while loading must not overwrite the saved session with
+      // a blank one.
+      expect(result.current.isLoaded).toBe(false);
+      expect(storage.saveCalls).toBe(0);
+
+      await waitFor(() => expect(result.current.isLoaded).toBe(true));
+      expect(JSON.stringify(storage.data.messages)).toContain("Saved-marker-message");
+    });
+
+    it("keeps working when saving fails", async () => {
+      const storage = createMemoryStorage(null);
+      storage.save = async () => {
+        throw new Error("write failed");
+      };
+      const { result } = await setupLoaded(storage);
+
+      act(() => result.current.sendUserMessage("Still works"));
+
+      expect(result.current.messages.at(-1)).toMatchObject({
+        role: "user",
+        content: "Still works",
+      });
+    });
+
+    it("keeps working when saving returns a rejected promise", async () => {
+      const storage = createMemoryStorage(null);
+      storage.save = () => Promise.reject(new Error("write failed"));
+      const { result } = await setupLoaded(storage);
+
+      act(() => result.current.updateUiState("budget", 1));
+
+      expect(result.current.uiState.budget).toBe(1);
+    });
+
+    it("brings a saved session back in a new hook using the same storage", async () => {
+      const storage = createMemoryStorage(null);
+      const first = await setupLoaded(storage);
+
+      submit(
+        first.result,
+        makeResponse({ context_updates: [{ key: "summary", value: "Round-trip-summary" }] })
+      );
+      act(() => first.result.current.sendUserMessage("Round-trip-message"));
+      await waitFor(() =>
+        expect(JSON.stringify(storage.data?.messages)).toContain("Round-trip-message")
+      );
+      first.unmount();
+
+      const second = await setupLoaded(storage);
+
+      expect(second.result.current.context.summary).toBe("Round-trip-summary");
+      expect(second.result.current.messages.at(-1)).toMatchObject({
+        role: "user",
+        content: "Round-trip-message",
+      });
+    });
+  });
+
+  describe("clearing on reset", () => {
+    it("clears the saved session when the session is reset", async () => {
+      const storage = createMemoryStorage(savedSession());
+      const { result } = await setupLoaded(storage);
+
+      act(() => result.current.resetSession());
+
+      await waitFor(() => expect(storage.data).toBeNull());
+      expect(storage.clearCalls).toBe(1);
+    });
+
+    it("does not write the blank session back after a reset", async () => {
+      const storage = createMemoryStorage(null);
+      const { result } = await setupLoaded(storage);
+      act(() => result.current.sendUserMessage("About to be reset"));
+      await waitFor(() => expect(storage.data).not.toBeNull());
+
+      act(() => result.current.resetSession());
+
+      await waitFor(() => expect(storage.data).toBeNull());
+      // Give a stray save a chance to run before checking.
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(storage.data).toBeNull();
+      expect(result.current.messages).toHaveLength(1);
+    });
+
+    it("saves again once the new session changes", async () => {
+      const storage = createMemoryStorage(savedSession());
+      const { result } = await setupLoaded(storage);
+      act(() => result.current.resetSession());
+      await waitFor(() => expect(storage.data).toBeNull());
+
+      act(() => result.current.sendUserMessage("Fresh-start-message"));
+
+      await waitFor(() => expect(storage.data).not.toBeNull());
+      expect(JSON.stringify(storage.data.messages)).toContain("Fresh-start-message");
+      expect(JSON.stringify(storage.data.messages)).not.toContain("Saved-marker-message");
+    });
+
+    it("keeps working when clearing fails", async () => {
+      const storage = createMemoryStorage(savedSession());
+      storage.clear = () => Promise.reject(new Error("clear failed"));
+      const { result } = await setupLoaded(storage);
+
+      act(() => result.current.resetSession());
+
+      expect(result.current.messages).toHaveLength(1);
+      expect(result.current.checklist).toEqual([]);
+    });
+  });
+
+  describe("without a storage", () => {
+    it("is loaded at once", () => {
+      const { result } = renderHook(() => useSession());
+      expect(result.current.isLoaded).toBe(true);
+    });
+
+    it("is loaded at once when the storage is null", () => {
+      const { result } = renderHook(() => useSession(null));
+      expect(result.current.isLoaded).toBe(true);
+    });
+
+    it("works as an in-memory session", () => {
+      const { result } = renderHook(() => useSession(null));
+
+      act(() => result.current.sendUserMessage("Memory only"));
+      act(() => result.current.updateUiState("budget", 7));
+
+      expect(result.current.messages.at(-1).content).toBe("Memory only");
+      expect(result.current.uiState.budget).toBe(7);
+    });
+
+    it("resets without needing a storage", () => {
+      const { result } = renderHook(() => useSession());
+      act(() => result.current.sendUserMessage("Memory only"));
+
+      expect(() => act(() => result.current.resetSession())).not.toThrow();
+      expect(result.current.messages).toHaveLength(1);
+    });
   });
 });

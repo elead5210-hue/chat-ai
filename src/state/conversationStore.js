@@ -141,6 +141,56 @@ export function resetConversation() {
   return createConversation();
 }
 
+const NEXUS_MESSAGES_BY_ID = Object.freeze({
+  [WELCOME_MESSAGE.id]: WELCOME_MESSAGE,
+  [PHASE_ADVANCE_MESSAGE_ID]: PHASE_ADVANCE_MESSAGE,
+  [COMPLETION_MESSAGE_ID]: COMPLETION_MESSAGE,
+});
+
+/**
+ * Bring a stored conversation back.
+ *
+ * Every message must be an object with a unique non-empty string id, a known
+ * role and non-blank string content. If the list is missing, empty or any
+ * message is invalid, nothing is restored and a fresh conversation (with just
+ * the welcome message) is returned. Nexus's own lines (welcome, phase-advance
+ * and completion) are restored from their canonical definitions, so the phase
+ * and completion state come back exactly as they were.
+ *
+ * The message id counter is moved past every restored "m<number>" id so
+ * messages created afterwards never reuse an id.
+ */
+export function restoreConversation(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return createConversation();
+
+  const seen = new Set();
+  const restored = [];
+  let highest = 0;
+
+  for (const message of messages) {
+    if (message === null || typeof message !== "object") return createConversation();
+    if (typeof message.id !== "string" || message.id.trim() === "") return createConversation();
+    if (seen.has(message.id)) return createConversation();
+    if (!CONVERSATION_ROLES.includes(message.role) || !hasText(message.content)) {
+      return createConversation();
+    }
+    seen.add(message.id);
+
+    const nexusMessage = NEXUS_MESSAGES_BY_ID[message.id];
+    if (nexusMessage && message.role === MESSAGE_ROLE_ASSISTANT) {
+      restored.push(nexusMessage);
+      continue;
+    }
+
+    const match = /^m(\d+)$/.exec(message.id);
+    if (match) highest = Math.max(highest, Number(match[1]));
+    restored.push({ id: message.id, role: message.role, content: message.content });
+  }
+
+  if (highest >= nextMessageId) nextMessageId = highest + 1;
+  return restored;
+}
+
 /**
  * Append a message to the end of the conversation.
  *

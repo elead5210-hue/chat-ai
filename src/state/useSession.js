@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_INSTRUCTION,
   generateContinuationPrompt,
@@ -24,6 +24,8 @@ import {
   getConversationStatus,
   isConversationComplete,
   resetConversation,
+  restoreConversation,
+  WELCOME_MESSAGE,
 } from "./conversationStore.js";
 import {
   applyResponseToUiState,
@@ -40,6 +42,10 @@ import {
   isChecklistComplete,
   resetChecklist,
 } from "./checklistStore.js";
+import {
+  createSessionSnapshot,
+  restoreSessionSnapshot,
+} from "../storage/sessionSnapshot.js";
 
 /**
  * Session hook. Keeps three separate stores and only combines them when the
@@ -47,8 +53,14 @@ import {
  *   - conversation (messages)  -> ./conversationStore.js
  *   - context (Context Snapshot) -> ../context/contextSnapshot.js
  *   - UI state (form values)   -> ./uiStateStore.js
+ *
+ * Persistence: when a storage is given ({ load, save, clear }, for example the
+ * one from ../storage/sessionDb.js), the saved session is restored on mount,
+ * the state is saved after every change and the saved session is cleared on
+ * reset. `isLoaded` is false until the restore has finished. Without a
+ * storage the session simply lives in memory and `isLoaded` is true at once.
  */
-export function useSession() {
+export function useSession(storage = null) {
   const [messages, setMessages] = useState(() => createConversation());
   const [context, setContext] = useState(() => createSnapshot());
   const [uiState, setUiState] = useState(() => createUiState());
@@ -61,6 +73,8 @@ export function useSession() {
   // Items to settle before the final document; defined by the AI when phase one completes.
   const [checklist, setChecklist] = useState(() => createChecklist());
   const checklistRef = useRef(checklist);
+  // False until the saved session (if any) has been restored.
+  const [isLoaded, setIsLoaded] = useState(() => !storage);
 
   // "boundaries" (phase one) until the AI signals phase_complete, then "context" (phase two).
   const phase = useMemo(() => getConversationPhase(messages), [messages]);
@@ -89,6 +103,87 @@ export function useSession() {
     () => generateFinalDocumentPrompt({ context, messages }),
     [context, messages]
   );
+
+  // Restore the saved session once, when the hook mounts.
+  useEffect(() => {
+    if (!storage) {
+      setIsLoaded(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      let raw = null;
+      try {
+        raw = await storage.load();
+      } catch {
+        raw = null;
+      }
+      if (cancelled) return;
+
+      if (raw) {
+        const restored = restoreSessionSnapshot(raw);
+        if (restored.ok) {
+          const saved = restored.value;
+          setMessages(restoreConversation(saved.messages));
+          setContext(saved.context);
+          setUiState(saved.uiState);
+          setInstruction(saved.instruction ?? DEFAULT_INSTRUCTION);
+          setLastResponse(saved.lastResponse);
+          lastResponseRef.current = saved.lastResponse;
+          checklistRef.current = saved.checklist;
+          setChecklist(saved.checklist);
+          setDocumentMarkdown(saved.documentMarkdown);
+        }
+      }
+
+      setIsLoaded(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storage]);
+
+  // Save the session after every change. A blank session is not saved, so a
+  // reset leaves nothing behind once the saved session has been cleared.
+  useEffect(() => {
+    if (!storage || !isLoaded) return;
+
+    const isPristine =
+      messages.length === 1 &&
+      messages[0]?.id === WELCOME_MESSAGE.id &&
+      lastResponse === null &&
+      documentMarkdown === "" &&
+      checklist.length === 0 &&
+      Object.keys(uiState).length === 0 &&
+      instruction === DEFAULT_INSTRUCTION &&
+      context.context_version === 1 &&
+      context.summary === "";
+    if (isPristine) return;
+
+    const snapshot = createSessionSnapshot({
+      messages,
+      context,
+      uiState,
+      instruction,
+      lastResponse,
+      checklist,
+      documentMarkdown,
+    });
+    Promise.resolve(storage.save(snapshot)).catch(() => {});
+  }, [
+    storage,
+    isLoaded,
+    messages,
+    context,
+    uiState,
+    instruction,
+    lastResponse,
+    checklist,
+    documentMarkdown,
+  ]);
 
   const sendUserMessage = useCallback((text) => {
     setMessages((current) => appendUserMessage(current, text));
@@ -195,7 +290,9 @@ export function useSession() {
     lastResponseRef.current = null;
     setValidationErrors([]);
     setDocumentMarkdown("");
-  }, []);
+    // Forget the saved session too, so a reload starts fresh.
+    if (storage) Promise.resolve(storage.clear()).catch(() => {});
+  }, [storage]);
 
   return {
     messages,
@@ -214,6 +311,7 @@ export function useSession() {
     isComplete,
     phase,
     checklist,
+    isLoaded,
     finalPrompt,
     documentMarkdown,
     submitDocument,

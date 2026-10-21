@@ -4,9 +4,23 @@ import InterchangePanel from "./components/interchange/InterchangePanel.jsx";
 import DocumentPreview from "./components/document/DocumentPreview.jsx";
 import SessionMenu from "./components/layout/SessionMenu.jsx";
 import { useSession } from "./state/useSession.js";
+import { createSessionDb } from "./storage/sessionDb.js";
+
+// Created once so the storage keeps the same identity between renders.
+const sessionStorage = createSessionDb();
 
 export default function App() {
-  const session = useSession();
+  const session = useSession(sessionStorage);
+
+  // Wait for the saved session to be restored so a blank session is never
+  // shown first and then replaced.
+  if (!session.isLoaded) {
+    return (
+      <div className="app app-loading" data-area="app" role="status" aria-live="polite">
+        <p className="app-loading-text">Loading your session…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="app" data-area="app">

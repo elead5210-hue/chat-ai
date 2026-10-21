@@ -25,6 +25,7 @@ import {
   isConversationComplete,
   isNexusMessage,
   resetConversation,
+  restoreConversation,
 } from "./conversationStore.js";
 
 describe("constants", () => {
@@ -420,6 +421,210 @@ describe("conversation phases", () => {
     const advanced = advancePhase(createConversation());
     expect(getConversationPhase(advanced)).toBe("context");
     expect(getConversationPhase(resetConversation())).toBe("boundaries");
+  });
+});
+
+describe("restoreConversation", () => {
+  const STORED = [
+    { id: "welcome", role: "assistant", content: "What would you like to work on?" },
+    { id: "m1", role: "user", content: "A report on churn." },
+    { id: "m2", role: "assistant", content: "Who is it for?" },
+  ];
+
+  it("restores a valid list of messages in order", () => {
+    const restored = restoreConversation(STORED);
+    expect(restored).toHaveLength(3);
+    expect(restored.map((message) => message.id)).toEqual(["welcome", "m1", "m2"]);
+    expect(restored[1]).toEqual({ id: "m1", role: "user", content: "A report on churn." });
+    expect(restored[2]).toEqual({ id: "m2", role: "assistant", content: "Who is it for?" });
+  });
+
+  it("returns new message objects and does not mutate the input", () => {
+    const input = JSON.parse(JSON.stringify(STORED));
+    const restored = restoreConversation(input);
+    expect(restored).not.toBe(input);
+    expect(restored[1]).not.toBe(input[1]);
+    expect(input).toEqual(STORED);
+  });
+
+  it("keeps only id, role and content on each message", () => {
+    const restored = restoreConversation([
+      { id: "m1", role: "user", content: "Hi", extra: "ignored" },
+    ]);
+    expect(Object.keys(restored[0]).sort()).toEqual(["content", "id", "role"]);
+  });
+
+  it("keeps the content exactly as stored", () => {
+    const restored = restoreConversation([
+      { id: "m1", role: "assistant", content: "  Line one\nLine two  " },
+    ]);
+    expect(restored[0].content).toBe("  Line one\nLine two  ");
+  });
+
+  describe("invalid input", () => {
+    it.each([[undefined], [null], ["x"], [42], [{}], [[]]])(
+      "returns a fresh conversation for %s",
+      (value) => {
+        expect(restoreConversation(value)).toEqual([WELCOME_MESSAGE]);
+      }
+    );
+
+    it.each([
+      ["a message that is not an object", ["hello"]],
+      ["a null message", [null]],
+      ["a missing id", [{ role: "user", content: "Hi" }]],
+      ["an empty id", [{ id: "  ", role: "user", content: "Hi" }]],
+      ["a non-string id", [{ id: 5, role: "user", content: "Hi" }]],
+      ["an unknown role", [{ id: "m1", role: "system", content: "Hi" }]],
+      ["blank content", [{ id: "m1", role: "user", content: "   " }]],
+      ["non-string content", [{ id: "m1", role: "user", content: 5 }]],
+      [
+        "duplicate ids",
+        [
+          { id: "m1", role: "user", content: "One" },
+          { id: "m1", role: "user", content: "Two" },
+        ],
+      ],
+    ])("returns a fresh conversation for %s", (_label, input) => {
+      expect(restoreConversation(input)).toEqual([WELCOME_MESSAGE]);
+    });
+
+    it("restores nothing when only one message in the list is invalid", () => {
+      const restored = restoreConversation([
+        { id: "m1", role: "user", content: "Fine" },
+        { id: "m2", role: "user", content: "" },
+      ]);
+      expect(restored).toEqual([WELCOME_MESSAGE]);
+    });
+
+    it("returns a new array each time it falls back", () => {
+      expect(restoreConversation(null)).not.toBe(restoreConversation(null));
+    });
+  });
+
+  describe("Nexus messages and phase", () => {
+    it("restores the welcome message as the canonical Nexus message", () => {
+      const restored = restoreConversation(STORED);
+      expect(restored[0]).toBe(WELCOME_MESSAGE);
+      expect(isNexusMessage(restored[0])).toBe(true);
+    });
+
+    it("stays in phase one when there is no phase-advance message", () => {
+      expect(getConversationPhase(restoreConversation(STORED))).toBe("boundaries");
+    });
+
+    it("restores phase two when the phase-advance message was stored", () => {
+      const stored = [
+        ...STORED,
+        { id: PHASE_ADVANCE_MESSAGE_ID, role: "assistant", content: "anything" },
+      ];
+      const restored = restoreConversation(stored);
+      expect(getConversationPhase(restored)).toBe("context");
+      expect(restored.at(-1)).toBe(PHASE_ADVANCE_MESSAGE);
+      expect(isNexusMessage(restored.at(-1))).toBe(true);
+    });
+
+    it("restores a completed conversation as complete", () => {
+      const stored = [
+        ...STORED,
+        { id: COMPLETION_MESSAGE_ID, role: "assistant", content: "anything" },
+      ];
+      const restored = restoreConversation(stored);
+      expect(isConversationComplete(restored)).toBe(true);
+      expect(getConversationStatus(restored)).toBe("complete");
+      expect(restored.at(-1)).toBe(COMPLETION_MESSAGE);
+    });
+
+    it("restores a completed phase-two conversation with both markers", () => {
+      const stored = [
+        ...STORED,
+        { id: PHASE_ADVANCE_MESSAGE_ID, role: "assistant", content: "x" },
+        { id: COMPLETION_MESSAGE_ID, role: "assistant", content: "x" },
+      ];
+      const restored = restoreConversation(stored);
+      expect(getConversationPhase(restored)).toBe("context");
+      expect(isConversationComplete(restored)).toBe(true);
+    });
+
+    it("round-trips a conversation built with the store helpers", () => {
+      let messages = createConversation();
+      messages = appendUserMessage(messages, "Hello");
+      messages = appendAssistantMessage(messages, "Who is it for?");
+      messages = advancePhase(messages);
+      messages = appendUserMessage(messages, "Executives");
+      messages = completeConversation(messages);
+
+      const restored = restoreConversation(JSON.parse(JSON.stringify(messages)));
+
+      expect(restored).toEqual(messages);
+      expect(getConversationPhase(restored)).toBe("context");
+      expect(isConversationComplete(restored)).toBe(true);
+    });
+
+    it("does not treat a user message with a Nexus id as a Nexus message", () => {
+      const restored = restoreConversation([
+        { id: PHASE_ADVANCE_MESSAGE_ID, role: "user", content: "Hi" },
+      ]);
+      expect(isNexusMessage(restored[0])).toBe(false);
+      expect(restored[0].role).toBe("user");
+    });
+  });
+
+  describe("message ids after restoring", () => {
+    it("never reuses a restored id for a new message", () => {
+      const restored = restoreConversation([
+        { id: "m9000", role: "user", content: "One" },
+        { id: "m9001", role: "assistant", content: "Two" },
+      ]);
+
+      const next = appendUserMessage(restored, "Three");
+      const ids = next.map((message) => message.id);
+
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(Number(next.at(-1).id.slice(1))).toBeGreaterThan(9001);
+    });
+
+    it("gives every message created after restoring a unique id", () => {
+      let messages = restoreConversation([
+        { id: "m7000", role: "user", content: "One" },
+      ]);
+      for (let index = 0; index < 20; index += 1) {
+        messages = appendUserMessage(messages, `Message ${index}`);
+      }
+      const ids = messages.map((message) => message.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it("does not move the counter backwards when restoring lower ids", () => {
+      restoreConversation([{ id: "m8000", role: "user", content: "High" }]);
+      const afterHigh = Number(createMessage("user", "x").id.slice(1));
+
+      restoreConversation([{ id: "m2", role: "user", content: "Low" }]);
+      const afterLow = Number(createMessage("user", "x").id.slice(1));
+
+      expect(afterHigh).toBeGreaterThan(8000);
+      expect(afterLow).toBeGreaterThan(afterHigh);
+    });
+
+    it("ignores ids that do not look like generated message ids", () => {
+      const before = Number(createMessage("user", "x").id.slice(1));
+      restoreConversation([
+        { id: "custom-id", role: "user", content: "One" },
+        { id: "message-999999", role: "assistant", content: "Two" },
+      ]);
+      const after = Number(createMessage("user", "x").id.slice(1));
+      expect(after).toBe(before + 1);
+    });
+
+    it("does not move the counter when nothing could be restored", () => {
+      const before = Number(createMessage("user", "x").id.slice(1));
+      restoreConversation([
+        { id: "m99999", role: "user", content: "Fine" },
+        { id: "m99999", role: "user", content: "Duplicate" },
+      ]);
+      const after = Number(createMessage("user", "x").id.slice(1));
+      expect(after).toBe(before + 1);
+    });
   });
 });
 
