@@ -305,6 +305,10 @@ export function validateResponseObject(data) {
     errors.push('"conversation_complete" must be a boolean when present.');
   }
 
+  if (data.phase_complete !== undefined && typeof data.phase_complete !== "boolean") {
+    errors.push('"phase_complete" must be a boolean when present.');
+  }
+
   return errors.length > 0 ? { ok: false, errors } : { ok: true, value: data };
 }
 

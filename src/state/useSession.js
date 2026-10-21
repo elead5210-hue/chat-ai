@@ -17,7 +17,9 @@ import {
   appendMessage,
   appendUserMessage,
   completeConversation,
+  advancePhase,
   createConversation,
+  getConversationPhase,
   getConversationStatus,
   isConversationComplete,
   resetConversation,
@@ -48,10 +50,13 @@ export function useSession() {
   const [documentMarkdown, setDocumentMarkdown] = useState("");
   const lastResponseRef = useRef(null);
 
+  // "boundaries" (phase one) until the AI signals phase_complete, then "context" (phase two).
+  const phase = useMemo(() => getConversationPhase(messages), [messages]);
+
   // The one place the three stores meet.
   const promptInput = useMemo(
-    () => buildPromptInput({ instruction, messages, context, uiState }),
-    [instruction, context, messages, uiState]
+    () => buildPromptInput({ instruction, messages, context, uiState, phase }),
+    [instruction, context, messages, uiState, phase]
   );
 
   const prompt = useMemo(() => generatePrompt(promptInput), [promptInput]);
@@ -139,6 +144,10 @@ export function useSession() {
       setContext((current) => applyContextUpdates(current, response.context_updates));
       // UI state store: what the user has entered into generated forms.
       setUiState((current) => applyResponseToUiState(current, previousComponents, response));
+      // The AI signalled that phase one (document boundaries) is finished.
+      if (response.phase_complete === true) {
+        setMessages((current) => advancePhase(current));
+      }
       // The AI signalled that the conversation is finished.
       if (response.conversation_complete === true) {
         setMessages((current) => completeConversation(current));
@@ -174,6 +183,7 @@ export function useSession() {
     continuationPrompt,
     conversationStatus,
     isComplete,
+    phase,
     finalPrompt,
     documentMarkdown,
     submitDocument,

@@ -2,18 +2,25 @@ import { describe, it, expect } from "vitest";
 import {
   COMPLETION_MESSAGE,
   COMPLETION_MESSAGE_ID,
+  CONVERSATION_PHASES,
+  CONVERSATION_PHASE_BOUNDARIES,
+  CONVERSATION_PHASE_CONTEXT,
   CONVERSATION_ROLES,
   CONVERSATION_STATUS_ACTIVE,
   CONVERSATION_STATUS_COMPLETE,
   MESSAGE_ROLE_ASSISTANT,
   MESSAGE_ROLE_USER,
+  PHASE_ADVANCE_MESSAGE,
+  PHASE_ADVANCE_MESSAGE_ID,
   WELCOME_MESSAGE,
+  advancePhase,
   appendAssistantMessage,
   appendMessage,
   appendUserMessage,
   completeConversation,
   createConversation,
   createMessage,
+  getConversationPhase,
   getConversationStatus,
   isConversationComplete,
   isNexusMessage,
@@ -337,6 +344,82 @@ describe("conversation completion", () => {
     const fresh = resetConversation();
     expect(isConversationComplete(fresh)).toBe(false);
     expect(appendUserMessage(fresh, "Hi")).toHaveLength(2);
+  });
+});
+
+describe("conversation phases", () => {
+  it("defines the two phases and the phase-advance message", () => {
+    expect(CONVERSATION_PHASE_BOUNDARIES).toBe("boundaries");
+    expect(CONVERSATION_PHASE_CONTEXT).toBe("context");
+    expect(CONVERSATION_PHASES).toEqual(["boundaries", "context"]);
+    expect(PHASE_ADVANCE_MESSAGE.id).toBe(PHASE_ADVANCE_MESSAGE_ID);
+    expect(PHASE_ADVANCE_MESSAGE.role).toBe("assistant");
+    expect(Object.isFrozen(PHASE_ADVANCE_MESSAGE)).toBe(true);
+  });
+
+  it("starts in phase one (boundaries)", () => {
+    expect(getConversationPhase(createConversation())).toBe("boundaries");
+  });
+
+  it.each([[null], [undefined], ["x"], [42], [{}]])(
+    "is in phase one for %s",
+    (value) => {
+      expect(getConversationPhase(value)).toBe("boundaries");
+    }
+  );
+
+  it("advancePhase appends the phase-advance message and moves to phase two", () => {
+    const original = appendUserMessage(createConversation(), "Hello");
+    const next = advancePhase(original);
+    expect(next).not.toBe(original);
+    expect(original).toHaveLength(2);
+    expect(next).toHaveLength(3);
+    expect(next[2]).toBe(PHASE_ADVANCE_MESSAGE);
+    expect(getConversationPhase(next)).toBe("context");
+  });
+
+  it("advancePhase is idempotent", () => {
+    const advanced = advancePhase(createConversation());
+    expect(advancePhase(advanced)).toBe(advanced);
+  });
+
+  it("advancePhase treats a missing list as empty", () => {
+    expect(advancePhase(undefined)).toEqual([PHASE_ADVANCE_MESSAGE]);
+  });
+
+  it("advancePhase does nothing once the conversation is complete", () => {
+    const done = completeConversation(createConversation());
+    expect(advancePhase(done)).toBe(done);
+    expect(getConversationPhase(done)).toBe("boundaries");
+  });
+
+  it("keeps accepting messages in phase two", () => {
+    const advanced = advancePhase(createConversation());
+    const next = appendUserMessage(advanced, "More detail");
+    expect(next).toHaveLength(3);
+    expect(getConversationPhase(next)).toBe("context");
+  });
+
+  it("can still complete after advancing to phase two", () => {
+    const done = completeConversation(advancePhase(createConversation()));
+    expect(isConversationComplete(done)).toBe(true);
+    expect(getConversationPhase(done)).toBe("context");
+  });
+
+  it("treats the phase-advance message as a Nexus message", () => {
+    expect(isNexusMessage(PHASE_ADVANCE_MESSAGE)).toBe(true);
+  });
+
+  it("does not treat a user message with the phase-advance id as a Nexus message", () => {
+    expect(isNexusMessage({ id: PHASE_ADVANCE_MESSAGE_ID, role: "user", content: "Hi" })).toBe(
+      false
+    );
+  });
+
+  it("returns to phase one after a reset", () => {
+    const advanced = advancePhase(createConversation());
+    expect(getConversationPhase(advanced)).toBe("context");
+    expect(getConversationPhase(resetConversation())).toBe("boundaries");
   });
 });
 

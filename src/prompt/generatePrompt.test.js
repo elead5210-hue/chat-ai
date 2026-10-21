@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  BOUNDARIES_PHASE_INSTRUCTION,
+  CONTEXT_PHASE_INSTRUCTION,
   DEFAULT_INSTRUCTION,
   generatePrompt,
   generatePromptSections,
@@ -9,6 +11,7 @@ import {
   COMPONENT_TYPES,
   PROTOCOL_NAME,
   PROTOCOL_VERSION,
+  OPTIONAL_RESPONSE_FIELDS,
   RESPONSE_FIELDS,
   RESPONSE_SCHEMA_RULES,
 } from "../protocol/schema.js";
@@ -236,14 +239,22 @@ describe("generatePromptSections", () => {
     }
   });
 
-  it("marks every v1 field as required", () => {
+  it("marks every v1 field as required and every optional field as optional", () => {
     const { responseSchema } = generatePromptSections();
     const lines = responseSchema.split("\n").filter((line) => line.startsWith("- "));
 
-    expect(lines).toHaveLength(RESPONSE_FIELDS.length);
-    for (const line of lines) {
+    expect(lines).toHaveLength(RESPONSE_FIELDS.length + OPTIONAL_RESPONSE_FIELDS.length);
+    lines.slice(0, RESPONSE_FIELDS.length).forEach((line) => {
       expect(line).toMatch(/^- [a-z_]+ \(required, /);
-    }
+    });
+    lines.slice(RESPONSE_FIELDS.length).forEach((line) => {
+      expect(line).toMatch(/^- [a-z_]+ \(optional, /);
+    });
+  });
+
+  it("lists the phase_complete field as optional", () => {
+    const { responseSchema } = generatePromptSections();
+    expect(responseSchema).toMatch(/- phase_complete \(optional, boolean\):/);
   });
 
   it("puts the field list before the rules and the rules before the example", () => {
@@ -285,6 +296,87 @@ describe("generatePromptSections", () => {
     }).responseSchema;
 
     expect(filled).toBe(empty);
+  });
+});
+
+describe("phase-specific instructions", () => {
+  it("uses the phase one instruction for the boundaries phase", () => {
+    const sections = generatePromptSections({ phase: "boundaries" });
+    expect(sections.instruction).toBe(BOUNDARIES_PHASE_INSTRUCTION.trim());
+    expect(sections.instruction).toMatch(/PHASE ONE/);
+    expect(sections.instruction).toMatch(/boundaries of the document/);
+  });
+
+  it("uses the phase two instruction for the context phase", () => {
+    const sections = generatePromptSections({ phase: "context" });
+    expect(sections.instruction).toBe(CONTEXT_PHASE_INSTRUCTION.trim());
+    expect(sections.instruction).toMatch(/PHASE TWO/);
+    expect(sections.instruction).toMatch(/context needed/);
+  });
+
+  it("gives each phase its own instruction text", () => {
+    expect(BOUNDARIES_PHASE_INSTRUCTION).not.toBe(CONTEXT_PHASE_INSTRUCTION);
+    expect(BOUNDARIES_PHASE_INSTRUCTION).not.toBe(DEFAULT_INSTRUCTION);
+    expect(CONTEXT_PHASE_INSTRUCTION).not.toBe(DEFAULT_INSTRUCTION);
+  });
+
+  it("tells the AI to signal phase_complete in phase one, not conversation_complete", () => {
+    expect(BOUNDARIES_PHASE_INSTRUCTION).toContain("phase_complete");
+    expect(BOUNDARIES_PHASE_INSTRUCTION).toMatch(/Do not set conversation_complete/);
+  });
+
+  it("tells the AI to signal conversation_complete in phase two", () => {
+    expect(CONTEXT_PHASE_INSTRUCTION).toContain("conversation_complete");
+    expect(CONTEXT_PHASE_INSTRUCTION).toContain('next_action to "complete"');
+  });
+
+  it("keeps the default instruction when no phase is given", () => {
+    expect(generatePromptSections().instruction).toBe(DEFAULT_INSTRUCTION.trim());
+    expect(generatePromptSections({ phase: null }).instruction).toBe(DEFAULT_INSTRUCTION.trim());
+  });
+
+  it("keeps the default instruction for an unknown phase", () => {
+    const sections = generatePromptSections({ phase: "unknown" });
+    expect(sections.instruction).toBe(DEFAULT_INSTRUCTION.trim());
+  });
+
+  it("uses the phase instruction when the default instruction is passed explicitly", () => {
+    const sections = generatePromptSections({
+      instruction: DEFAULT_INSTRUCTION,
+      phase: "context",
+    });
+    expect(sections.instruction).toBe(CONTEXT_PHASE_INSTRUCTION.trim());
+  });
+
+  it("uses the phase instruction when the instruction is blank", () => {
+    const sections = generatePromptSections({ instruction: "   ", phase: "boundaries" });
+    expect(sections.instruction).toBe(BOUNDARIES_PHASE_INSTRUCTION.trim());
+  });
+
+  it("lets a custom instruction win over the phase instruction", () => {
+    for (const phase of ["boundaries", "context"]) {
+      const sections = generatePromptSections({
+        instruction: "Help the user plan a 7-day holiday.",
+        phase,
+      });
+      expect(sections.instruction).toBe("Help the user plan a 7-day holiday.");
+    }
+  });
+
+  it("puts the phase instruction in the generated prompt", () => {
+    const phaseOne = generatePrompt({ phase: "boundaries" });
+    const phaseTwo = generatePrompt({ phase: "context" });
+
+    expect(phaseOne).toContain(BOUNDARIES_PHASE_INSTRUCTION.trim());
+    expect(phaseOne).not.toContain(CONTEXT_PHASE_INSTRUCTION.trim());
+    expect(phaseTwo).toContain(CONTEXT_PHASE_INSTRUCTION.trim());
+    expect(phaseTwo).not.toContain(BOUNDARIES_PHASE_INSTRUCTION.trim());
+  });
+
+  it("does not change the response schema between phases", () => {
+    const one = generatePromptSections({ phase: "boundaries" }).responseSchema;
+    const two = generatePromptSections({ phase: "context" }).responseSchema;
+    expect(one).toBe(two);
   });
 });
 

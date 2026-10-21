@@ -16,7 +16,7 @@ The prompt already contains the field list, the rules and an example, so an AI d
 
 ## The response object
 
-A response is one JSON object with exactly these seven top-level fields. All seven are required. Use `[]` when there is nothing to send for an array field. Any other top-level field is rejected.
+A response is one JSON object with exactly these seven top-level fields. All seven are required. Use `[]` when there is nothing to send for an array field. Apart from the two [optional fields](#optional-fields) described below, any other top-level field is rejected.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -52,6 +52,33 @@ A response is one JSON object with exactly these seven top-level fields. All sev
 | `request_clarification` | The AI needs the user to clarify something before it can continue. |
 
 Any other value is rejected.
+
+## Optional fields
+
+Two further top-level fields are optional. They are not part of the seven required fields. Leave them out, or use `false`, when they do not apply. When present, each must be a boolean.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `phase_complete` | boolean | Set to `true` when phase one (defining the boundaries of the document) is finished. The application then moves to phase two. |
+| `conversation_complete` | boolean | Set to `true` when the conversation has reached its end point. The application then stops accepting further turns. Normally sent together with `next_action` set to `"complete"`. |
+
+## Two-phase flow
+
+The conversation runs in two phases before it ends. The application tells the AI which phase it is in through the instruction at the top of each generated prompt.
+
+| Phase | Name | Purpose | How it ends |
+|---|---|---|---|
+| 1 | `boundaries` | Define the boundaries of the document: its purpose, audience, scope and what is out of scope. | The AI sets `"phase_complete": true`. |
+| 2 | `context` | Capture the context needed to write the final document within those boundaries. | The AI sets `"next_action": "complete"` and `"conversation_complete": true`. |
+
+Notes:
+
+- Every conversation starts in phase one.
+- `phase_complete` only has an effect in phase one. Sending it again in phase two changes nothing.
+- The AI should not set `conversation_complete` during phase one.
+- When the application moves to phase two it adds a line from Nexus to the conversation. That line is Nexus's own and is not shown to the AI as something it said.
+- A custom instruction typed in the application replaces the phase instruction. The default instruction is replaced by the one for the current phase.
+- Once the conversation is complete, no further turns are accepted and the final document step follows.
 
 ## Components
 
@@ -172,7 +199,7 @@ The application validates the entire response before applying any part of it.
   - `components[1].options must be a non-empty array for type "select".`
   - `context_updates[2].value must be a non-empty string for op "add" on "decisions".`
   - `state_updates[0].value is required (use null to clear a field).`
-  - `Unknown field "answer". Allowed fields: protocol, version, message, components, context_updates, state_updates, next_action.`
+  - `Unknown field "answer". Allowed fields: protocol, version, message, components, context_updates, state_updates, next_action, conversation_complete, phase_complete.`
 - The text stays in the paste box so it can be corrected and submitted again.
 - A valid response replaces any earlier errors.
 
@@ -236,5 +263,7 @@ This response passes validation. It shows the message, asks for three fields, up
 | Context Snapshot and how context updates are applied | `src/context/contextSnapshot.js` |
 | Context fingerprint | `src/context/contextFingerprint.js` |
 | How form values are applied from a response | `src/state/uiStateStore.js` |
+| Conversation phase and completion state | `src/state/conversationStore.js` |
+| Phase-specific instructions in the generated prompt | `src/prompt/generatePrompt.js` |
 
 `RESPONSE_FIELDS` in `src/protocol/schema.js` is the single definition of the response fields. The example in the generated prompt and the field list the AI sees are both built from it, so this document should be updated alongside it when the protocol changes.

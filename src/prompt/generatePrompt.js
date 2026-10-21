@@ -6,7 +6,11 @@ import {
 } from "../protocol/schema.js";
 import { buildComponentCatalog } from "./componentCatalog.js";
 import { buildContextPackage, buildContinuationPrompt } from "../context/contextPackage.js";
-import { isNexusMessage } from "../state/conversationStore.js";
+import {
+  CONVERSATION_PHASE_BOUNDARIES,
+  CONVERSATION_PHASE_CONTEXT,
+  isNexusMessage,
+} from "../state/conversationStore.js";
 
 export const DEFAULT_INSTRUCTION =
   "You are the AI behind Nexus, a structured interface between a user and an AI. " +
@@ -16,13 +20,50 @@ export const DEFAULT_INSTRUCTION =
   "The conversation must end: once you have everything you need and the task is finished, " +
   "set next_action to \"complete\" and conversation_complete to true, and do not ask any further questions.";
 
+const PHASE_INSTRUCTION_INTRO =
+  "You are the AI behind Nexus, a structured interface between a user and an AI. " +
+  "The conversation has two phases and is used to prepare a final document. " +
+  "Reply to the user's latest message and, when you need information from them, describe the input fields to show using the available components. " +
+  "Your reply is parsed by an application, so it must follow the response schema exactly. ";
+
+/** Instruction for phase one: define the boundaries of the document. */
+export const BOUNDARIES_PHASE_INSTRUCTION =
+  PHASE_INSTRUCTION_INTRO +
+  "You are in PHASE ONE: defining the boundaries of the document. " +
+  "Work out with the user what the document is for, who it is for, what it must cover and what is out of scope. " +
+  "Record each boundary you settle in context_updates. " +
+  "Once the boundaries are clear, set phase_complete to true to move to phase two. " +
+  "Do not set conversation_complete to true during phase one.";
+
+/** Instruction for phase two: capture the context needed for the final document. */
+export const CONTEXT_PHASE_INSTRUCTION =
+  PHASE_INSTRUCTION_INTRO +
+  "You are in PHASE TWO: capturing the context needed to write the final document within the boundaries already defined. " +
+  "Ask only for the facts, details and preferences the document still needs, and record each answer in context_updates. " +
+  "Do not reopen the boundaries. " +
+  "Once you have everything needed, set next_action to \"complete\" and conversation_complete to true, and do not ask any further questions.";
+
+const PHASE_INSTRUCTIONS = Object.freeze({
+  [CONVERSATION_PHASE_BOUNDARIES]: BOUNDARIES_PHASE_INSTRUCTION,
+  [CONVERSATION_PHASE_CONTEXT]: CONTEXT_PHASE_INSTRUCTION,
+});
+
 function toJson(value) {
   return JSON.stringify(value, null, 2);
 }
 
-function resolveInstruction(instruction) {
-  if (typeof instruction !== "string" || instruction.trim() === "") {
-    return DEFAULT_INSTRUCTION;
+/**
+ * The instruction text. A custom instruction is always used as given. When the
+ * instruction is blank or the default and a known phase is supplied, the
+ * phase-specific instruction is used instead.
+ */
+function resolveInstruction(instruction, phase = null) {
+  const isDefault =
+    typeof instruction !== "string" ||
+    instruction.trim() === "" ||
+    instruction === DEFAULT_INSTRUCTION;
+  if (isDefault) {
+    return PHASE_INSTRUCTIONS[phase] ?? DEFAULT_INSTRUCTION;
   }
   return instruction;
 }
@@ -75,6 +116,9 @@ function formatConversation(messages) {
  * @param {Array}  [input.messages]     Conversation so far: { role, content }.
  * @param {object} [input.uiState]      Values the user entered in generated forms.
  * @param {string} [input.contextFingerprint]  Optional id for the context version.
+ * @param {string} [input.phase]        "boundaries" (phase one) or "context" (phase two).
+ *                                      Selects the phase-specific instruction when the
+ *                                      instruction is the default.
  */
 export function generatePromptSections({
   instruction = DEFAULT_INSTRUCTION,
@@ -82,6 +126,7 @@ export function generatePromptSections({
   messages = [],
   uiState = {},
   contextFingerprint = null,
+  phase = null,
 } = {}) {
   const contextBlock = buildContextPackage(context);
 
@@ -90,7 +135,7 @@ export function generatePromptSections({
     : toJson(uiState);
 
   return {
-    instruction: resolveInstruction(instruction).trim(),
+    instruction: resolveInstruction(instruction, phase).trim(),
     context: contextFingerprint
       ? `Context fingerprint: ${contextFingerprint}\n${contextBlock}`
       : contextBlock,

@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import SchemaForm from "../renderer/SchemaForm.jsx";
-import { isNexusMessage } from "../../state/conversationStore.js";
+import {
+  CONVERSATION_PHASE_CONTEXT,
+  isNexusMessage,
+} from "../../state/conversationStore.js";
+
+const PHASE_LABELS = Object.freeze({
+  boundaries: "Phase 1: boundaries",
+  context: "Phase 2: context",
+});
 
 /**
  * Chat-style conversation panel: message list plus a user input box.
@@ -12,6 +20,7 @@ import { isNexusMessage } from "../../state/conversationStore.js";
  *   uiState         - values the user has entered into generated fields
  *   onUiStateChange - (id, value) => void
  *   isComplete      - true once the conversation has terminated; input is disabled
+ *   phase           - "boundaries" (phase one) or "context" (phase two)
  *
  * Nexus is the interface, not the AI: its own lines (the welcome message) are
  * labelled "Nexus", and replies the user pasted in from the external AI are
@@ -28,6 +37,7 @@ export default function ConversationPanel({
   uiState = {},
   onUiStateChange,
   isComplete = false,
+  phase = "boundaries",
 }) {
   const [draft, setDraft] = useState("");
   const endRef = useRef(null);
@@ -59,6 +69,16 @@ export default function ConversationPanel({
       aria-label="Conversation"
     >
       <h2 className="panel-title">Conversation</h2>
+
+      {!isComplete && (
+        <div
+          className={`phase-indicator phase-${phase === CONVERSATION_PHASE_CONTEXT ? "context" : "boundaries"}`}
+          data-phase={phase}
+          role="status"
+        >
+          {PHASE_LABELS[phase] ?? PHASE_LABELS.boundaries}
+        </div>
+      )}
 
       <div className="panel-body message-scroll">
         <ul className="message-list" aria-live="polite">

@@ -256,6 +256,27 @@ body {
   text-align: center;
 }
 
+/* Shows which phase of the two-phase flow the conversation is in. */
+.phase-indicator {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin: 8px 16px 0;
+  padding: 3px 10px;
+  color: var(--text-muted);
+  background: var(--assistant-bubble);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.phase-indicator.phase-context {
+  color: var(--text);
+  background: var(--user-bubble);
+  border-color: var(--accent);
+}
+
 /* ---------- Schema form ---------- */
 
 .schema-form {

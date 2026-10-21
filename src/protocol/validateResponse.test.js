@@ -553,6 +553,46 @@ describe("conversation_complete signal", () => {
   });
 });
 
+describe("phase_complete signal", () => {
+  it("accepts a response without the field", () => {
+    expect(validateResponseObject(makeValid()).ok).toBe(true);
+  });
+
+  it("accepts true and false", () => {
+    expect(validateResponseObject(makeValid({ phase_complete: true })).ok).toBe(true);
+    expect(validateResponseObject(makeValid({ phase_complete: false })).ok).toBe(true);
+  });
+
+  it("accepts phase_complete together with conversation_complete", () => {
+    const result = validateResponseObject(
+      makeValid({ phase_complete: true, conversation_complete: false })
+    );
+    expect(result.errors ?? []).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it.each([["true"], [1], [0], [null], [{}], [[]]])(
+    "rejects %s as a non-boolean value",
+    (value) => {
+      const errors = errorsFor({ phase_complete: value });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/phase_complete.*boolean/);
+    }
+  );
+
+  it("does not treat the field as unknown", () => {
+    const errors = errorsFor({ phase_complete: true });
+    expect(errors.join(" ")).not.toMatch(/Unknown field/);
+  });
+
+  it("accepts the field through the full pipeline", () => {
+    const text = JSON.stringify(makeValid({ phase_complete: true }));
+    const result = validateResponse(text);
+    expect(result.ok).toBe(true);
+    expect(result.value.phase_complete).toBe(true);
+  });
+});
+
 describe("update errors through the full pipeline", () => {
   it("returns field-specific errors for pasted JSON with a malformed update", () => {
     const text = JSON.stringify(

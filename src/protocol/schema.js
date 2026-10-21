@@ -181,6 +181,10 @@ export const RESPONSE_FIELDS = Object.freeze([
  *
  *   conversation_complete  set to true to signal that the conversation has
  *                          reached its end point and must terminate.
+ *   phase_complete         set to true to signal that phase one (defining the
+ *                          boundaries of the document) is finished and the
+ *                          conversation should move to phase two (capturing
+ *                          the context for the final document).
  */
 export const OPTIONAL_RESPONSE_FIELDS = Object.freeze([
   defineField({
@@ -189,6 +193,14 @@ export const OPTIONAL_RESPONSE_FIELDS = Object.freeze([
     type: "boolean",
     description:
       "Set to true when the conversation has reached its end point. The application then stops accepting further turns. Omit or use false otherwise.",
+    example: false,
+  }),
+  defineField({
+    name: "phase_complete",
+    required: false,
+    type: "boolean",
+    description:
+      "Set to true when phase one (defining the boundaries of the document) is finished. The application then moves to phase two (capturing the context needed for the final document). Omit or use false otherwise.",
     example: false,
   }),
 ]);
@@ -219,5 +231,6 @@ export const RESPONSE_SCHEMA_RULES = [
   'Each item in "state_updates" is an object {"id": string, "value": any} that sets the value of the component with that id.',
   `"next_action" must be one of: ${NEXT_ACTIONS.join(", ")}.`,
   'When the task is finished and nothing further is needed, set "next_action" to "complete" and add "conversation_complete": true. Do not ask further questions after that. "conversation_complete" is optional and must be a boolean when present.',
+  'The conversation has two phases. Phase one defines the boundaries of the document (its purpose, audience, scope and what is out of scope). When those are settled, add "phase_complete": true to move to phase two, which captures the context needed to write the final document. "phase_complete" is optional and must be a boolean when present. Do not set "conversation_complete" during phase one.',
   "Describe the UI declaratively. Never return HTML.",
 ];
