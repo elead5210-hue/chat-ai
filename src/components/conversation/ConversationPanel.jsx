@@ -11,6 +11,7 @@ import { isNexusMessage } from "../../state/conversationStore.js";
  *   lastResponse    - last validated AI response (may be null)
  *   uiState         - values the user has entered into generated fields
  *   onUiStateChange - (id, value) => void
+ *   isComplete      - true once the conversation has terminated; input is disabled
  *
  * Nexus is the interface, not the AI: its own lines (the welcome message) are
  * labelled "Nexus", and replies the user pasted in from the external AI are
@@ -26,6 +27,7 @@ export default function ConversationPanel({
   lastResponse = null,
   uiState = {},
   onUiStateChange,
+  isComplete = false,
 }) {
   const [draft, setDraft] = useState("");
   const endRef = useRef(null);
@@ -38,7 +40,7 @@ export default function ConversationPanel({
 
   function submit() {
     const text = draft.trim();
-    if (!text) return;
+    if (isComplete || !text) return;
     onSend?.(text);
     setDraft("");
   }
@@ -78,23 +80,34 @@ export default function ConversationPanel({
           })}
         </ul>
         <SchemaForm
-          components={lastResponse?.components ?? []}
+          components={isComplete ? [] : (lastResponse?.components ?? [])}
           uiState={uiState}
           onChange={onUiStateChange}
         />
         <div ref={endRef} />
       </div>
 
+      {isComplete && (
+        <div className="conversation-complete-banner" role="status">
+          This conversation is complete. Start a new session to continue.
+        </div>
+      )}
+
       <div className="chat-input chat-input-pinned">
         <textarea
           rows={2}
           value={draft}
-          placeholder="Type your response..."
+          placeholder={isComplete ? "Conversation complete" : "Type your response..."}
           aria-label="Your message"
+          disabled={isComplete}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={handleKeyDown}
         />
-        <button type="button" onClick={submit} disabled={draft.trim() === ""}>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={isComplete || draft.trim() === ""}
+        >
           Send
         </button>
       </div>

@@ -33,7 +33,8 @@ export const MESSAGE_ROLES = ["assistant"];
  */
 export const NEXT_ACTION_DESCRIPTIONS = Object.freeze({
   await_user: "Wait for the user to reply or fill in the components shown.",
-  complete: "The task is finished and no further input is needed.",
+  complete:
+    "The task is finished and no further input is needed. The conversation ends and no further turns are accepted.",
   request_clarification: "The AI needs the user to clarify something before it can continue.",
 });
 
@@ -175,6 +176,24 @@ export const RESPONSE_FIELDS = Object.freeze([
 ]);
 
 /**
+ * Optional top-level fields. These are not part of RESPONSE_FIELDS (which are
+ * all required in v1) and are therefore left out of the example response.
+ *
+ *   conversation_complete  set to true to signal that the conversation has
+ *                          reached its end point and must terminate.
+ */
+export const OPTIONAL_RESPONSE_FIELDS = Object.freeze([
+  defineField({
+    name: "conversation_complete",
+    required: false,
+    type: "boolean",
+    description:
+      "Set to true when the conversation has reached its end point. The application then stops accepting further turns. Omit or use false otherwise.",
+    example: false,
+  }),
+]);
+
+/**
  * Example of a valid response. Built from RESPONSE_FIELDS so it cannot drift
  * from the field definitions, and embedded in the generated prompt so the
  * external AI knows exactly what to return.
@@ -199,5 +218,6 @@ export const RESPONSE_SCHEMA_RULES = [
   'Remove an open question with {"op": "remove", "field": "open_questions", "value": string} once the user has answered it.',
   'Each item in "state_updates" is an object {"id": string, "value": any} that sets the value of the component with that id.',
   `"next_action" must be one of: ${NEXT_ACTIONS.join(", ")}.`,
+  'When the task is finished and nothing further is needed, set "next_action" to "complete" and add "conversation_complete": true. Do not ask further questions after that. "conversation_complete" is optional and must be a boolean when present.',
   "Describe the UI declaratively. Never return HTML.",
 ];

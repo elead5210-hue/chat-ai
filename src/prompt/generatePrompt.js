@@ -1,5 +1,6 @@
 import {
   RESPONSE_FIELDS,
+  OPTIONAL_RESPONSE_FIELDS,
   RESPONSE_SCHEMA_EXAMPLE,
   RESPONSE_SCHEMA_RULES,
 } from "../protocol/schema.js";
@@ -11,7 +12,9 @@ export const DEFAULT_INSTRUCTION =
   "You are the AI behind Nexus, a structured interface between a user and an AI. " +
   "Continue the conversation below. Reply to the user's latest message and, when you need " +
   "information from them, describe the input fields to show using the available components. " +
-  "Your reply is parsed by an application, so it must follow the response schema exactly.";
+  "Your reply is parsed by an application, so it must follow the response schema exactly. " +
+  "The conversation must end: once you have everything you need and the task is finished, " +
+  "set next_action to \"complete\" and conversation_complete to true, and do not ask any further questions.";
 
 function toJson(value) {
   return JSON.stringify(value, null, 2);
@@ -37,7 +40,7 @@ function isEmpty(value) {
  * protocol definition.
  */
 function formatResponseFields() {
-  return RESPONSE_FIELDS.map((field) => {
+  return [...RESPONSE_FIELDS, ...OPTIONAL_RESPONSE_FIELDS].map((field) => {
     const flag = field.required ? "required" : "optional";
     return `- ${field.name} (${flag}, ${field.type}): ${field.description}`;
   }).join("\n");

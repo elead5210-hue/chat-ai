@@ -235,6 +235,27 @@ body {
   flex: 1;
 }
 
+.chat-input textarea:disabled,
+.chat-input input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--bg);
+}
+
+/* Shown once the conversation has terminated. */
+.conversation-complete-banner {
+  flex-shrink: 0;
+  margin: 0 16px 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  background: var(--user-bubble);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* ---------- Schema form ---------- */
 
 .schema-form {
@@ -440,6 +461,16 @@ body {
 
 .context-package .form-actions {
   flex-wrap: wrap;
+}
+
+.interchange-complete {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
 }
 
 .response-paste textarea {

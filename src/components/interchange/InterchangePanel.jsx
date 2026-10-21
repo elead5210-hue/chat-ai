@@ -28,6 +28,7 @@ import ResponsePaste from "./ResponsePaste.jsx";
  *   onInstructionReset  - () => void, restores the default instruction
  *   onSubmitResponse - (rawText) => boolean (true when the response was accepted)
  *   validationErrors - string[] describing why the last paste was rejected
+ *   isComplete       - true once the conversation has terminated; pasting is disabled
  */
 export default function InterchangePanel({
   prompt = "",
@@ -41,6 +42,7 @@ export default function InterchangePanel({
   onInstructionReset,
   onSubmitResponse,
   validationErrors = [],
+  isComplete = false,
 }) {
   const [promptOpen, setPromptOpen] = useState(true);
 
@@ -91,7 +93,13 @@ export default function InterchangePanel({
 
         <hr className="interchange-divider" />
 
-        <ResponsePaste onSubmit={onSubmitResponse} errors={validationErrors} />
+        {isComplete ? (
+          <p className="interchange-complete" role="status">
+            This conversation is complete. No further responses are accepted.
+          </p>
+        ) : (
+          <ResponsePaste onSubmit={onSubmitResponse} errors={validationErrors} />
+        )}
       </div>
     </section>
   );

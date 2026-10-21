@@ -513,6 +513,46 @@ describe("state_updates items", () => {
   });
 });
 
+describe("conversation_complete signal", () => {
+  it("accepts a response without the field", () => {
+    expect(validateResponseObject(makeValid()).ok).toBe(true);
+  });
+
+  it("accepts true and false", () => {
+    expect(validateResponseObject(makeValid({ conversation_complete: true })).ok).toBe(true);
+    expect(validateResponseObject(makeValid({ conversation_complete: false })).ok).toBe(true);
+  });
+
+  it("accepts a completing response with next_action complete", () => {
+    const result = validateResponseObject(
+      makeValid({ next_action: "complete", conversation_complete: true, components: [] })
+    );
+    expect(result.errors ?? []).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it.each([["true"], [1], [0], [null], [{}], [[]]])(
+    "rejects %s as a non-boolean value",
+    (value) => {
+      const errors = errorsFor({ conversation_complete: value });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/conversation_complete.*boolean/);
+    }
+  );
+
+  it("does not treat the field as unknown", () => {
+    const errors = errorsFor({ conversation_complete: true });
+    expect(errors.join(" ")).not.toMatch(/Unknown field/);
+  });
+
+  it("accepts the field through the full pipeline", () => {
+    const text = JSON.stringify(makeValid({ conversation_complete: true }));
+    const result = validateResponse(text);
+    expect(result.ok).toBe(true);
+    expect(result.value.conversation_complete).toBe(true);
+  });
+});
+
 describe("update errors through the full pipeline", () => {
   it("returns field-specific errors for pasted JSON with a malformed update", () => {
     const text = JSON.stringify(

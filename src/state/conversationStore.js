@@ -12,11 +12,25 @@
  *
  * Every helper is pure: it returns a new array (or the same one when nothing
  * changed) and never mutates its input.
+ *
+ * Completion: a conversation is complete once it contains a message with the
+ * id COMPLETION_MESSAGE_ID. After that point no further messages are appended,
+ * so the chat terminates instead of looping forever.
  */
 
 export const MESSAGE_ROLE_USER = "user";
 export const MESSAGE_ROLE_ASSISTANT = "assistant";
 export const CONVERSATION_ROLES = [MESSAGE_ROLE_USER, MESSAGE_ROLE_ASSISTANT];
+
+export const CONVERSATION_STATUS_ACTIVE = "active";
+export const CONVERSATION_STATUS_COMPLETE = "complete";
+export const COMPLETION_MESSAGE_ID = "complete";
+
+export const COMPLETION_MESSAGE = Object.freeze({
+  id: COMPLETION_MESSAGE_ID,
+  role: MESSAGE_ROLE_ASSISTANT,
+  content: "This conversation is complete.",
+});
 
 export const WELCOME_MESSAGE = Object.freeze({
   id: "welcome",
@@ -35,8 +49,33 @@ export function isNexusMessage(message) {
     message !== null &&
     typeof message === "object" &&
     message.role === MESSAGE_ROLE_ASSISTANT &&
-    message.id === WELCOME_MESSAGE.id
+    (message.id === WELCOME_MESSAGE.id || message.id === COMPLETION_MESSAGE_ID)
   );
+}
+
+/** True once the conversation has reached its end point. */
+export function isConversationComplete(messages) {
+  return (
+    Array.isArray(messages) &&
+    messages.some((message) => message && message.id === COMPLETION_MESSAGE_ID)
+  );
+}
+
+/** The conversation status: "active" or "complete". */
+export function getConversationStatus(messages) {
+  return isConversationComplete(messages)
+    ? CONVERSATION_STATUS_COMPLETE
+    : CONVERSATION_STATUS_ACTIVE;
+}
+
+/**
+ * Mark the conversation as complete by appending the completion message.
+ * Returns the same array when it is already complete.
+ */
+export function completeConversation(messages) {
+  const current = Array.isArray(messages) ? messages : [];
+  if (isConversationComplete(current)) return current;
+  return [...current, COMPLETION_MESSAGE];
 }
 
 let nextMessageId = 1;
@@ -69,6 +108,7 @@ export function resetConversation() {
  */
 export function appendMessage(messages, role, content) {
   const current = Array.isArray(messages) ? messages : [];
+  if (isConversationComplete(current)) return current;
   if (!CONVERSATION_ROLES.includes(role) || !hasText(content)) return current;
   return [...current, createMessage(role, content)];
 }

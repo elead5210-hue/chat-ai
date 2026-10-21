@@ -15,7 +15,10 @@ import { computeContextFingerprint } from "../context/contextFingerprint.js";
 import {
   appendMessage,
   appendUserMessage,
+  completeConversation,
   createConversation,
+  getConversationStatus,
+  isConversationComplete,
   resetConversation,
 } from "./conversationStore.js";
 import {
@@ -54,6 +57,9 @@ export function useSession() {
   // Identifies this exact snapshot; recomputed only when the context changes.
   const contextFingerprint = useMemo(() => computeContextFingerprint(context), [context]);
   const contextVersion = context.context_version;
+  // "active" or "complete"; once complete, no further turns are accepted.
+  const conversationStatus = useMemo(() => getConversationStatus(messages), [messages]);
+  const isComplete = isConversationComplete(messages);
   const continuationPrompt = useMemo(
     () => generateContinuationPrompt(buildContinuationInput({ messages, context })),
     [context, messages]
@@ -61,6 +67,11 @@ export function useSession() {
 
   const sendUserMessage = useCallback((text) => {
     setMessages((current) => appendUserMessage(current, text));
+  }, []);
+
+  /** Mark the conversation as finished so the chat terminates. */
+  const finishConversation = useCallback(() => {
+    setMessages((current) => completeConversation(current));
   }, []);
 
   const updateUiState = useCallback((id, value) => {
@@ -83,6 +94,7 @@ export function useSession() {
    */
   const submitResponse = useCallback(
     (rawText) => {
+      if (isComplete) return false;
       const result = validateResponse(rawText);
 
       if (!result.ok) {
@@ -103,9 +115,13 @@ export function useSession() {
       setContext((current) => applyContextUpdates(current, response.context_updates));
       // UI state store: what the user has entered into generated forms.
       setUiState((current) => applyResponseToUiState(current, previousComponents, response));
+      // The AI signalled that the conversation is finished.
+      if (response.conversation_complete === true) {
+        setMessages((current) => completeConversation(current));
+      }
       return true;
     },
-    []
+    [isComplete]
   );
 
   const resetSession = useCallback(() => {
@@ -131,7 +147,10 @@ export function useSession() {
     contextFingerprint,
     contextVersion,
     continuationPrompt,
+    conversationStatus,
+    isComplete,
     sendUserMessage,
+    finishConversation,
     updateUiState,
     updateInstruction,
     resetInstruction,

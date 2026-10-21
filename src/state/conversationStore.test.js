@@ -1,14 +1,21 @@
 import { describe, it, expect } from "vitest";
 import {
+  COMPLETION_MESSAGE,
+  COMPLETION_MESSAGE_ID,
   CONVERSATION_ROLES,
+  CONVERSATION_STATUS_ACTIVE,
+  CONVERSATION_STATUS_COMPLETE,
   MESSAGE_ROLE_ASSISTANT,
   MESSAGE_ROLE_USER,
   WELCOME_MESSAGE,
   appendAssistantMessage,
   appendMessage,
   appendUserMessage,
+  completeConversation,
   createConversation,
   createMessage,
+  getConversationStatus,
+  isConversationComplete,
   isNexusMessage,
   resetConversation,
 } from "./conversationStore.js";
@@ -267,6 +274,69 @@ describe("isNexusMessage", () => {
 
   it("does not change the message shape", () => {
     expect(Object.keys(WELCOME_MESSAGE).sort()).toEqual(["content", "id", "role"]);
+  });
+});
+
+describe("conversation completion", () => {
+  it("defines the completion message and statuses", () => {
+    expect(COMPLETION_MESSAGE.id).toBe(COMPLETION_MESSAGE_ID);
+    expect(COMPLETION_MESSAGE.role).toBe("assistant");
+    expect(Object.isFrozen(COMPLETION_MESSAGE)).toBe(true);
+    expect(CONVERSATION_STATUS_ACTIVE).toBe("active");
+    expect(CONVERSATION_STATUS_COMPLETE).toBe("complete");
+  });
+
+  it("is active for a new conversation", () => {
+    const messages = createConversation();
+    expect(isConversationComplete(messages)).toBe(false);
+    expect(getConversationStatus(messages)).toBe("active");
+  });
+
+  it.each([[null], [undefined], ["x"], [42], [{}]])(
+    "is not complete for %s",
+    (value) => {
+      expect(isConversationComplete(value)).toBe(false);
+      expect(getConversationStatus(value)).toBe("active");
+    }
+  );
+
+  it("completeConversation appends the completion message", () => {
+    const original = appendUserMessage(createConversation(), "Hello");
+    const next = completeConversation(original);
+    expect(next).not.toBe(original);
+    expect(original).toHaveLength(2);
+    expect(next).toHaveLength(3);
+    expect(next[2]).toBe(COMPLETION_MESSAGE);
+    expect(isConversationComplete(next)).toBe(true);
+    expect(getConversationStatus(next)).toBe("complete");
+  });
+
+  it("completeConversation is idempotent", () => {
+    const done = completeConversation(createConversation());
+    expect(completeConversation(done)).toBe(done);
+  });
+
+  it("completeConversation treats a missing list as empty", () => {
+    expect(completeConversation(undefined)).toEqual([COMPLETION_MESSAGE]);
+  });
+
+  it("ignores further messages once complete", () => {
+    const done = completeConversation(createConversation());
+    expect(appendMessage(done, "user", "More")).toBe(done);
+    expect(appendUserMessage(done, "More")).toBe(done);
+    expect(appendAssistantMessage(done, "More")).toBe(done);
+  });
+
+  it("treats the completion message as a Nexus message", () => {
+    expect(isNexusMessage(COMPLETION_MESSAGE)).toBe(true);
+  });
+
+  it("returns to active after a reset", () => {
+    const done = completeConversation(createConversation());
+    expect(isConversationComplete(done)).toBe(true);
+    const fresh = resetConversation();
+    expect(isConversationComplete(fresh)).toBe(false);
+    expect(appendUserMessage(fresh, "Hi")).toHaveLength(2);
   });
 });
 

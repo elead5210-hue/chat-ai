@@ -4,6 +4,7 @@ import {
   NEXT_ACTIONS,
   MESSAGE_ROLES,
   RESPONSE_FIELDS,
+  OPTIONAL_RESPONSE_FIELDS,
   CONTEXT_LIST_FIELDS,
   CONTEXT_OBJECT_FIELDS,
   getComponentTypes,
@@ -244,7 +245,9 @@ export function validateResponseObject(data) {
     return { ok: false, errors: ["The response must be a JSON object."] };
   }
 
-  const knownFields = RESPONSE_FIELDS.map((field) => field.name);
+  const knownFields = [...RESPONSE_FIELDS, ...OPTIONAL_RESPONSE_FIELDS].map(
+    (field) => field.name
+  );
   for (const key of Object.keys(data)) {
     if (!knownFields.includes(key)) {
       errors.push(`Unknown field "${key}". Allowed fields: ${knownFields.join(", ")}.`);
@@ -293,6 +296,13 @@ export function validateResponseObject(data) {
 
   if (!NEXT_ACTIONS.includes(data.next_action)) {
     errors.push(`"next_action" must be one of: ${NEXT_ACTIONS.join(", ")}.`);
+  }
+
+  if (
+    data.conversation_complete !== undefined &&
+    typeof data.conversation_complete !== "boolean"
+  ) {
+    errors.push('"conversation_complete" must be a boolean when present.');
   }
 
   return errors.length > 0 ? { ok: false, errors } : { ok: true, value: data };
