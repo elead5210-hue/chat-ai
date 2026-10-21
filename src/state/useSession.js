@@ -16,6 +16,7 @@ import { computeContextFingerprint } from "../context/contextFingerprint.js";
 import {
   appendMessage,
   appendUserMessage,
+  CONVERSATION_PHASE_BOUNDARIES,
   completeConversation,
   advancePhase,
   createConversation,
@@ -31,6 +32,14 @@ import {
   setValue,
 } from "./uiStateStore.js";
 import { buildContinuationInput, buildPromptInput } from "./promptInput.js";
+import {
+  applyChecklistUpdates,
+  createChecklist,
+  createChecklistFromItems,
+  hasChecklist,
+  isChecklistComplete,
+  resetChecklist,
+} from "./checklistStore.js";
 
 /**
  * Session hook. Keeps three separate stores and only combines them when the
@@ -49,14 +58,17 @@ export function useSession() {
   // The final Markdown document pasted in after the conversation is complete.
   const [documentMarkdown, setDocumentMarkdown] = useState("");
   const lastResponseRef = useRef(null);
+  // Items to settle before the final document; defined by the AI when phase one completes.
+  const [checklist, setChecklist] = useState(() => createChecklist());
+  const checklistRef = useRef(checklist);
 
   // "boundaries" (phase one) until the AI signals phase_complete, then "context" (phase two).
   const phase = useMemo(() => getConversationPhase(messages), [messages]);
 
   // The one place the three stores meet.
   const promptInput = useMemo(
-    () => buildPromptInput({ instruction, messages, context, uiState, phase }),
-    [instruction, context, messages, uiState, phase]
+    () => buildPromptInput({ instruction, messages, context, uiState, phase, checklist }),
+    [instruction, context, messages, uiState, phase, checklist]
   );
 
   const prompt = useMemo(() => generatePrompt(promptInput), [promptInput]);
@@ -148,17 +160,34 @@ export function useSession() {
       if (response.phase_complete === true) {
         setMessages((current) => advancePhase(current));
       }
-      // The AI signalled that the conversation is finished.
-      if (response.conversation_complete === true) {
+      // Checklist store: defined when phase one completes, then updated by each response.
+      let nextChecklist = checklistRef.current;
+      if (
+        response.phase_complete === true &&
+        phase === CONVERSATION_PHASE_BOUNDARIES &&
+        !hasChecklist(nextChecklist)
+      ) {
+        nextChecklist = createChecklistFromItems(response.checklist);
+      }
+      nextChecklist = applyChecklistUpdates(nextChecklist, response.checklist_updates);
+      if (nextChecklist !== checklistRef.current) {
+        checklistRef.current = nextChecklist;
+        setChecklist(nextChecklist);
+      }
+      // The AI signalled that the conversation is finished, or every checklist
+      // item is now satisfied so the final document step can run.
+      if (response.conversation_complete === true || isChecklistComplete(nextChecklist)) {
         setMessages((current) => completeConversation(current));
       }
       return true;
     },
-    [isComplete]
+    [isComplete, phase]
   );
 
   const resetSession = useCallback(() => {
     setMessages(resetConversation());
+    checklistRef.current = resetChecklist();
+    setChecklist(checklistRef.current);
     setContext(createSnapshot());
     setUiState(resetUiState());
     setInstruction(DEFAULT_INSTRUCTION);
@@ -184,6 +213,7 @@ export function useSession() {
     conversationStatus,
     isComplete,
     phase,
+    checklist,
     finalPrompt,
     documentMarkdown,
     submitDocument,

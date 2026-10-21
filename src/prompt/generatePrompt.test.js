@@ -380,6 +380,133 @@ describe("phase-specific instructions", () => {
   });
 });
 
+describe("checklist", () => {
+  const CHECKLIST = [
+    { id: "audience", label: "Who the document is for", satisfied: true },
+    { id: "scope", label: "What the document covers", satisfied: false },
+  ];
+
+  it("has no checklist section when there is no checklist", () => {
+    expect(generatePromptSections().checklist).toBeNull();
+    expect(generatePromptSections({ checklist: [] }).checklist).toBeNull();
+    expect(generatePromptSections({ checklist: null }).checklist).toBeNull();
+    expect(generatePromptSections({ checklist: "x" }).checklist).toBeNull();
+  });
+
+  it("serialises the checklist as JSON with id, label and satisfied", () => {
+    const sections = generatePromptSections({ checklist: CHECKLIST });
+    expect(JSON.parse(sections.checklist)).toEqual(CHECKLIST);
+  });
+
+  it("only includes id, label and satisfied for each item", () => {
+    const sections = generatePromptSections({
+      checklist: [{ id: "a", label: "A", satisfied: true, extra: "ignored" }],
+    });
+    expect(JSON.parse(sections.checklist)).toEqual([
+      { id: "a", label: "A", satisfied: true },
+    ]);
+  });
+
+  it("reports an item as unsatisfied unless it is exactly true", () => {
+    const sections = generatePromptSections({
+      checklist: [
+        { id: "a", label: "A" },
+        { id: "b", label: "B", satisfied: "yes" },
+      ],
+    });
+    expect(JSON.parse(sections.checklist).map((item) => item.satisfied)).toEqual([
+      false,
+      false,
+    ]);
+  });
+
+  it("does not change the checklist it is given", () => {
+    const checklist = CHECKLIST.map((item) => ({ ...item }));
+    generatePromptSections({ checklist });
+    expect(checklist).toEqual(CHECKLIST);
+  });
+
+  it("leaves the CHECKLIST section out of the prompt when there is no checklist", () => {
+    expect(generatePrompt()).not.toContain("## CHECKLIST");
+    expect(generatePrompt({ checklist: [] })).not.toContain("## CHECKLIST");
+  });
+
+  it("puts the CHECKLIST section with the checklist JSON in the prompt when one exists", () => {
+    const prompt = generatePrompt({ phase: "context", checklist: CHECKLIST });
+    const section = prompt.slice(
+      prompt.indexOf("## CHECKLIST"),
+      prompt.indexOf("## CURRENT UI STATE")
+    );
+
+    expect(prompt).toContain("## CHECKLIST");
+    expect(section).toContain(generatePromptSections({ checklist: CHECKLIST }).checklist);
+    expect(section).toContain("checklist_updates");
+  });
+
+  it("places the CHECKLIST section after the conversation and before the UI state", () => {
+    const prompt = generatePrompt({ phase: "context", checklist: CHECKLIST });
+    const conversationIndex = prompt.indexOf("## CONVERSATION SO FAR");
+    const checklistIndex = prompt.indexOf("## CHECKLIST");
+    const uiStateIndex = prompt.indexOf("## CURRENT UI STATE");
+
+    expect(checklistIndex).toBeGreaterThan(conversationIndex);
+    expect(uiStateIndex).toBeGreaterThan(checklistIndex);
+  });
+
+  it("keeps the other sections in order when a checklist is present", () => {
+    const prompt = generatePrompt({ phase: "context", checklist: CHECKLIST });
+    const headings = [
+      "## INSTRUCTION",
+      "## CONTEXT",
+      "## CONVERSATION SO FAR",
+      "## CHECKLIST",
+      "## CURRENT UI STATE",
+      "## AVAILABLE COMPONENTS",
+      "## RESPONSE SCHEMA",
+    ];
+
+    let lastIndex = -1;
+    for (const heading of headings) {
+      const index = prompt.indexOf(heading);
+      expect(index, `missing heading ${heading}`).toBeGreaterThan(lastIndex);
+      lastIndex = index;
+    }
+  });
+
+  it("lists the checklist and checklist_updates fields as optional", () => {
+    const { responseSchema } = generatePromptSections();
+    expect(responseSchema).toMatch(/- checklist \(optional, /);
+    expect(responseSchema).toMatch(/- checklist_updates \(optional, /);
+  });
+
+  it("does not change the response schema when a checklist is present", () => {
+    const without = generatePromptSections().responseSchema;
+    const withChecklist = generatePromptSections({ checklist: CHECKLIST }).responseSchema;
+    expect(withChecklist).toBe(without);
+  });
+});
+
+describe("checklist instructions", () => {
+  it("tells the AI in phase one to send a checklist when it completes the phase", () => {
+    expect(BOUNDARIES_PHASE_INSTRUCTION).toContain("phase_complete");
+    expect(BOUNDARIES_PHASE_INSTRUCTION).toMatch(/checklist/);
+  });
+
+  it("tells the AI in phase two to send checklist_updates for satisfied items", () => {
+    expect(CONTEXT_PHASE_INSTRUCTION).toContain("checklist_updates");
+    expect(CONTEXT_PHASE_INSTRUCTION).toMatch(/every checklist item is satisfied/);
+  });
+
+  it("puts the phase two checklist instruction in the generated prompt", () => {
+    const prompt = generatePrompt({ phase: "context" });
+    expect(prompt).toContain("checklist_updates");
+  });
+
+  it("uses the checklist wording only in the phase instruction, not the default", () => {
+    expect(DEFAULT_INSTRUCTION).not.toMatch(/checklist/);
+  });
+});
+
 describe("generatePrompt", () => {
   const input = {
     instruction: "Help the user plan a 7-day holiday.",

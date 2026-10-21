@@ -185,6 +185,11 @@ export const RESPONSE_FIELDS = Object.freeze([
  *                          boundaries of the document) is finished and the
  *                          conversation should move to phase two (capturing
  *                          the context for the final document).
+ *   checklist              the checklist of items that must be settled before
+ *                          the final document. Sent together with
+ *                          phase_complete when phase one finishes.
+ *   checklist_updates      which checklist items the user's latest response
+ *                          now satisfies. Sent during phase two.
  */
 export const OPTIONAL_RESPONSE_FIELDS = Object.freeze([
   defineField({
@@ -202,6 +207,25 @@ export const OPTIONAL_RESPONSE_FIELDS = Object.freeze([
     description:
       "Set to true when phase one (defining the boundaries of the document) is finished. The application then moves to phase two (capturing the context needed for the final document). Omit or use false otherwise.",
     example: false,
+  }),
+  defineField({
+    name: "checklist",
+    required: false,
+    type: "array of { id, label }",
+    description:
+      "The checklist of items that must be settled before the final document can be written. Send it once, together with phase_complete, when phase one finishes. Each item has a unique string id and a short label. Omit otherwise.",
+    example: [
+      { id: "audience", label: "Who the document is for" },
+      { id: "scope", label: "What the document must cover" },
+    ],
+  }),
+  defineField({
+    name: "checklist_updates",
+    required: false,
+    type: "array of { id, satisfied }",
+    description:
+      "Checklist items that the user's latest response satisfies, by item id. Use satisfied true when the item is settled. The conversation completes automatically once every item is satisfied. Omit when nothing changed.",
+    example: [{ id: "audience", satisfied: true }],
   }),
 ]);
 
@@ -232,5 +256,7 @@ export const RESPONSE_SCHEMA_RULES = [
   `"next_action" must be one of: ${NEXT_ACTIONS.join(", ")}.`,
   'When the task is finished and nothing further is needed, set "next_action" to "complete" and add "conversation_complete": true. Do not ask further questions after that. "conversation_complete" is optional and must be a boolean when present.',
   'The conversation has two phases. Phase one defines the boundaries of the document (its purpose, audience, scope and what is out of scope). When those are settled, add "phase_complete": true to move to phase two, which captures the context needed to write the final document. "phase_complete" is optional and must be a boolean when present. Do not set "conversation_complete" during phase one.',
+  'When you set "phase_complete" to true, also send "checklist": an array of {"id": string, "label": string} items, each with a unique id, listing everything that must still be settled before the final document can be written. "checklist" is optional and is only used once, when phase one finishes.',
+  'In phase two, after each user response, send "checklist_updates": an array of {"id": string, "satisfied": boolean} for every checklist item that the response now satisfies. Use only ids from the checklist. "checklist_updates" is optional. The conversation completes automatically once every item is satisfied.',
   "Describe the UI declaratively. Never return HTML.",
 ];

@@ -27,6 +27,7 @@ export default function App() {
           onUiStateChange={session.updateUiState}
           isComplete={session.isComplete}
           phase={session.phase}
+          checklist={session.checklist}
         />
 
         <InterchangePanel

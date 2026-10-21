@@ -593,6 +593,183 @@ describe("phase_complete signal", () => {
   });
 });
 
+describe("checklist field", () => {
+  const ITEMS = [
+    { id: "audience", label: "Who the document is for" },
+    { id: "scope", label: "What the document covers" },
+  ];
+
+  it("accepts a response without the field", () => {
+    expect(validateResponseObject(makeValid()).ok).toBe(true);
+  });
+
+  it("accepts a list of { id, label } items", () => {
+    const result = validateResponseObject(
+      makeValid({ phase_complete: true, checklist: ITEMS })
+    );
+    expect(result.errors ?? []).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts an empty list", () => {
+    expect(validateResponseObject(makeValid({ checklist: [] })).ok).toBe(true);
+  });
+
+  it("does not treat the field as unknown", () => {
+    const errors = errorsFor({ checklist: ITEMS });
+    expect(errors.join(" ")).not.toMatch(/Unknown field/);
+  });
+
+  it.each([["text"], [42], [{}], [null], [true]])(
+    "rejects %s as a non-array value",
+    (value) => {
+      const errors = errorsFor({ checklist: value });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/"checklist" must be an array/);
+    }
+  );
+
+  it("rejects an item that is not an object and names its index", () => {
+    const errors = errorsFor({ checklist: [ITEMS[0], "scope", null] });
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toMatch(/checklist\[1\] must be an object with "id" and "label"/);
+    expect(errors[1]).toMatch(/checklist\[2\]/);
+  });
+
+  it("rejects a missing, empty or non-string id", () => {
+    const errors = errorsFor({
+      checklist: [{ label: "A" }, { id: "", label: "B" }, { id: 5, label: "C" }],
+    });
+    expect(errors).toHaveLength(3);
+    expect(errors[0]).toMatch(/checklist\[0\]\.id must be a non-empty string/);
+    expect(errors[1]).toMatch(/checklist\[1\]\.id/);
+    expect(errors[2]).toMatch(/checklist\[2\]\.id/);
+  });
+
+  it("rejects a missing, empty or non-string label", () => {
+    const errors = errorsFor({
+      checklist: [{ id: "a" }, { id: "b", label: "   " }, { id: "c", label: 5 }],
+    });
+    expect(errors).toHaveLength(3);
+    expect(errors[0]).toMatch(/checklist\[0\]\.label must be a non-empty string/);
+    expect(errors[1]).toMatch(/checklist\[1\]\.label/);
+    expect(errors[2]).toMatch(/checklist\[2\]\.label/);
+  });
+
+  it("rejects duplicate ids", () => {
+    const errors = errorsFor({
+      checklist: [
+        { id: "dup", label: "One" },
+        { id: "dup", label: "Two" },
+      ],
+    });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/checklist\[1\]\.id "dup" is a duplicate/);
+  });
+
+  it("treats ids that differ only by surrounding whitespace as duplicates", () => {
+    const errors = errorsFor({
+      checklist: [
+        { id: "a", label: "One" },
+        { id: " a ", label: "Two" },
+      ],
+    });
+    expect(errors.join(" ")).toMatch(/duplicate/);
+  });
+
+  it("accepts the field through the full pipeline", () => {
+    const text = JSON.stringify(makeValid({ phase_complete: true, checklist: ITEMS }));
+    const result = validateResponse(text);
+    expect(result.ok).toBe(true);
+    expect(result.value.checklist).toEqual(ITEMS);
+  });
+});
+
+describe("checklist_updates field", () => {
+  it("accepts a response without the field", () => {
+    expect(validateResponseObject(makeValid()).ok).toBe(true);
+  });
+
+  it("accepts { id, satisfied } items", () => {
+    const result = validateResponseObject(
+      makeValid({
+        checklist_updates: [
+          { id: "audience", satisfied: true },
+          { id: "scope", satisfied: false },
+        ],
+      })
+    );
+    expect(result.errors ?? []).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts an empty list", () => {
+    expect(validateResponseObject(makeValid({ checklist_updates: [] })).ok).toBe(true);
+  });
+
+  it("does not treat the field as unknown", () => {
+    const errors = errorsFor({ checklist_updates: [{ id: "a", satisfied: true }] });
+    expect(errors.join(" ")).not.toMatch(/Unknown field/);
+  });
+
+  it.each([["text"], [42], [{}], [null], [true]])(
+    "rejects %s as a non-array value",
+    (value) => {
+      const errors = errorsFor({ checklist_updates: value });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/"checklist_updates" must be an array/);
+    }
+  );
+
+  it("rejects an item that is not an object and names its index", () => {
+    const errors = errorsFor({
+      checklist_updates: [{ id: "a", satisfied: true }, "b", null],
+    });
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toMatch(
+      /checklist_updates\[1\] must be an object with "id" and "satisfied"/
+    );
+    expect(errors[1]).toMatch(/checklist_updates\[2\]/);
+  });
+
+  it("rejects a missing, empty or non-string id", () => {
+    const errors = errorsFor({
+      checklist_updates: [
+        { satisfied: true },
+        { id: "", satisfied: true },
+        { id: 5, satisfied: true },
+      ],
+    });
+    expect(errors).toHaveLength(3);
+    expect(errors[0]).toMatch(/checklist_updates\[0\]\.id must be a non-empty string/);
+    expect(errors[1]).toMatch(/checklist_updates\[1\]\.id/);
+    expect(errors[2]).toMatch(/checklist_updates\[2\]\.id/);
+  });
+
+  it.each([["true"], [1], [0], [null], [undefined], [{}]])(
+    "rejects %s as a non-boolean satisfied value",
+    (value) => {
+      const errors = errorsFor({ checklist_updates: [{ id: "a", satisfied: value }] });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/checklist_updates\[0\]\.satisfied must be a boolean/);
+    }
+  );
+
+  it("reports a bad id and a bad satisfied value on the same item separately", () => {
+    const errors = errorsFor({ checklist_updates: [{}] });
+    expect(errors).toHaveLength(2);
+    expect(errors.every((error) => error.includes("checklist_updates[0]"))).toBe(true);
+  });
+
+  it("accepts the field through the full pipeline", () => {
+    const updates = [{ id: "audience", satisfied: true }];
+    const text = JSON.stringify(makeValid({ checklist_updates: updates }));
+    const result = validateResponse(text);
+    expect(result.ok).toBe(true);
+    expect(result.value.checklist_updates).toEqual(updates);
+  });
+});
+
 describe("update errors through the full pipeline", () => {
   it("returns field-specific errors for pasted JSON with a malformed update", () => {
     const text = JSON.stringify(

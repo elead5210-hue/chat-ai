@@ -16,7 +16,7 @@ The prompt already contains the field list, the rules and an example, so an AI d
 
 ## The response object
 
-A response is one JSON object with exactly these seven top-level fields. All seven are required. Use `[]` when there is nothing to send for an array field. Apart from the two [optional fields](#optional-fields) described below, any other top-level field is rejected.
+A response is one JSON object with exactly these seven top-level fields. All seven are required. Use `[]` when there is nothing to send for an array field. Apart from the four [optional fields](#optional-fields) described below, any other top-level field is rejected.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -55,12 +55,14 @@ Any other value is rejected.
 
 ## Optional fields
 
-Two further top-level fields are optional. They are not part of the seven required fields. Leave them out, or use `false`, when they do not apply. When present, each must be a boolean.
+Four further top-level fields are optional. They are not part of the seven required fields. Leave them out when they do not apply. `phase_complete` and `conversation_complete` must be booleans when present. `checklist` and `checklist_updates` must be arrays when present. See [Checklist](#checklist).
 
 | Field | Type | Meaning |
 |---|---|---|
 | `phase_complete` | boolean | Set to `true` when phase one (defining the boundaries of the document) is finished. The application then moves to phase two. |
 | `conversation_complete` | boolean | Set to `true` when the conversation has reached its end point. The application then stops accepting further turns. Normally sent together with `next_action` set to `"complete"`. |
+| `checklist` | array of `{ id, label }` | The items that must be settled before the final document can be written. Sent once, together with `phase_complete`, when phase one finishes. |
+| `checklist_updates` | array of `{ id, satisfied }` | The checklist items that the user's latest response now satisfies. Sent during phase two. |
 
 ## Two-phase flow
 
@@ -68,8 +70,8 @@ The conversation runs in two phases before it ends. The application tells the AI
 
 | Phase | Name | Purpose | How it ends |
 |---|---|---|---|
-| 1 | `boundaries` | Define the boundaries of the document: its purpose, audience, scope and what is out of scope. | The AI sets `"phase_complete": true`. |
-| 2 | `context` | Capture the context needed to write the final document within those boundaries. | The AI sets `"next_action": "complete"` and `"conversation_complete": true`. |
+| 1 | `boundaries` | Define the boundaries of the document: its purpose, audience, scope and what is out of scope. | The AI sets `"phase_complete": true` and sends a `checklist`. |
+| 2 | `context` | Capture the context needed to write the final document within those boundaries. | Every checklist item is satisfied, or the AI sets `"next_action": "complete"` and `"conversation_complete": true`. |
 
 Notes:
 
@@ -79,6 +81,47 @@ Notes:
 - When the application moves to phase two it adds a line from Nexus to the conversation. That line is Nexus's own and is not shown to the AI as something it said.
 - A custom instruction typed in the application replaces the phase instruction. The default instruction is replaced by the one for the current phase.
 - Once the conversation is complete, no further turns are accepted and the final document step follows.
+
+## Checklist
+
+The checklist tracks what is still to be settled before the final document is written. It is how the application knows phase two is finished.
+
+### Defining the checklist
+
+When the AI completes phase one, it sends `"phase_complete": true` together with a `checklist`:
+
+```json
+"checklist": [
+  { "id": "audience", "label": "Who the document is for" },
+  { "id": "scope", "label": "What the document must cover" }
+]
+```
+
+- Each item needs a non-empty string `id` and a non-empty string `label`.
+- Ids must be unique within the checklist. A duplicate id rejects the response.
+- Every item starts as not satisfied.
+- The checklist is only taken from the response that completes phase one. A `checklist` sent at any other time is ignored, and a checklist that already exists is never replaced.
+- A response that completes phase one without a `checklist` is accepted. There is then no checklist, and the conversation ends only when the AI sets `conversation_complete`.
+
+### Updating the checklist
+
+In phase two the checklist is included in each generated prompt under `CHECKLIST`, as JSON with each item's `id`, `label` and `satisfied` flag. After each user response the AI sends `checklist_updates` for the items that response satisfies:
+
+```json
+"checklist_updates": [
+  { "id": "audience", "satisfied": true }
+]
+```
+
+- Each update needs a non-empty string `id` and a boolean `satisfied`.
+- Updates for ids that are not on the checklist are ignored.
+- Use `"satisfied": false` to reopen an item.
+- If several updates name the same id, the last one wins.
+- A response whose updates change nothing leaves the checklist as it was.
+
+### Automatic completion
+
+When every checklist item is satisfied, the application completes the conversation itself, as if the AI had set `conversation_complete`. No further turns are accepted and the final document step follows. A checklist with no items never completes the conversation. The AI can still end the conversation earlier by setting `conversation_complete`.
 
 ## Components
 
@@ -199,7 +242,9 @@ The application validates the entire response before applying any part of it.
   - `components[1].options must be a non-empty array for type "select".`
   - `context_updates[2].value must be a non-empty string for op "add" on "decisions".`
   - `state_updates[0].value is required (use null to clear a field).`
-  - `Unknown field "answer". Allowed fields: protocol, version, message, components, context_updates, state_updates, next_action, conversation_complete, phase_complete.`
+  - `Unknown field "answer". Allowed fields: protocol, version, message, components, context_updates, state_updates, next_action, conversation_complete, phase_complete, checklist, checklist_updates.`
+  - `checklist[1].id "audience" is a duplicate. Checklist ids must be unique.`
+  - `checklist_updates[0].satisfied must be a boolean.`
 - The text stays in the paste box so it can be corrected and submitted again.
 - A valid response replaces any earlier errors.
 
@@ -264,6 +309,8 @@ This response passes validation. It shows the message, asks for three fields, up
 | Context fingerprint | `src/context/contextFingerprint.js` |
 | How form values are applied from a response | `src/state/uiStateStore.js` |
 | Conversation phase and completion state | `src/state/conversationStore.js` |
+| Checklist items, updates and the all-satisfied check | `src/state/checklistStore.js` |
+| Applying the checklist and completing the conversation from a response | `src/state/useSession.js` |
 | Phase-specific instructions in the generated prompt | `src/prompt/generatePrompt.js` |
 
 `RESPONSE_FIELDS` in `src/protocol/schema.js` is the single definition of the response fields. The example in the generated prompt and the field list the AI sees are both built from it, so this document should be updated alongside it when the protocol changes.

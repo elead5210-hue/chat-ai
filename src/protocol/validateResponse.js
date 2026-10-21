@@ -234,6 +234,43 @@ function validateStateUpdate(update, index, errors) {
   }
 }
 
+function validateChecklistItem(item, index, seenIds, errors) {
+  const where = `checklist[${index}]`;
+
+  if (!isPlainObject(item)) {
+    errors.push(`${where} must be an object with "id" and "label".`);
+    return;
+  }
+
+  if (!isNonEmptyString(item.id)) {
+    errors.push(`${where}.id must be a non-empty string.`);
+  } else if (seenIds.has(item.id.trim())) {
+    errors.push(`${where}.id "${item.id}" is a duplicate. Checklist ids must be unique.`);
+  } else {
+    seenIds.add(item.id.trim());
+  }
+
+  if (!isNonEmptyString(item.label)) {
+    errors.push(`${where}.label must be a non-empty string.`);
+  }
+}
+
+function validateChecklistUpdate(update, index, errors) {
+  const where = `checklist_updates[${index}]`;
+
+  if (!isPlainObject(update)) {
+    errors.push(`${where} must be an object with "id" and "satisfied".`);
+    return;
+  }
+
+  if (!isNonEmptyString(update.id)) {
+    errors.push(`${where}.id must be a non-empty string.`);
+  }
+  if (typeof update.satisfied !== "boolean") {
+    errors.push(`${where}.satisfied must be a boolean.`);
+  }
+}
+
 /**
  * Validate an already-parsed object against the Nexus protocol.
  * Returns { ok: true, value } or { ok: false, errors: string[] }.
@@ -307,6 +344,27 @@ export function validateResponseObject(data) {
 
   if (data.phase_complete !== undefined && typeof data.phase_complete !== "boolean") {
     errors.push('"phase_complete" must be a boolean when present.');
+  }
+
+  if (data.checklist !== undefined) {
+    if (!Array.isArray(data.checklist)) {
+      errors.push('"checklist" must be an array of { id, label } items when present.');
+    } else {
+      const seenChecklistIds = new Set();
+      data.checklist.forEach((item, index) =>
+        validateChecklistItem(item, index, seenChecklistIds, errors)
+      );
+    }
+  }
+
+  if (data.checklist_updates !== undefined) {
+    if (!Array.isArray(data.checklist_updates)) {
+      errors.push('"checklist_updates" must be an array of { id, satisfied } items when present.');
+    } else {
+      data.checklist_updates.forEach((update, index) =>
+        validateChecklistUpdate(update, index, errors)
+      );
+    }
   }
 
   return errors.length > 0 ? { ok: false, errors } : { ok: true, value: data };

@@ -32,7 +32,7 @@ export const BOUNDARIES_PHASE_INSTRUCTION =
   "You are in PHASE ONE: defining the boundaries of the document. " +
   "Work out with the user what the document is for, who it is for, what it must cover and what is out of scope. " +
   "Record each boundary you settle in context_updates. " +
-  "Once the boundaries are clear, set phase_complete to true to move to phase two. " +
+  "Once the boundaries are clear, set phase_complete to true to move to phase two, and in the same reply send a checklist of the items that must still be settled before the final document can be written. " +
   "Do not set conversation_complete to true during phase one.";
 
 /** Instruction for phase two: capture the context needed for the final document. */
@@ -41,6 +41,8 @@ export const CONTEXT_PHASE_INSTRUCTION =
   "You are in PHASE TWO: capturing the context needed to write the final document within the boundaries already defined. " +
   "Ask only for the facts, details and preferences the document still needs, and record each answer in context_updates. " +
   "Do not reopen the boundaries. " +
+  "A checklist of items to settle is shown below. After each user response, send checklist_updates marking every checklist item that the response now satisfies. " +
+  "The conversation completes automatically once every checklist item is satisfied. " +
   "Once you have everything needed, set next_action to \"complete\" and conversation_complete to true, and do not ask any further questions.";
 
 const PHASE_INSTRUCTIONS = Object.freeze({
@@ -66,6 +68,21 @@ function resolveInstruction(instruction, phase = null) {
     return PHASE_INSTRUCTIONS[phase] ?? DEFAULT_INSTRUCTION;
   }
   return instruction;
+}
+
+/**
+ * The checklist as JSON, or null when there is no checklist yet. Only the
+ * fields the AI needs are included: id, label and whether it is satisfied.
+ */
+function formatChecklist(checklist) {
+  if (!Array.isArray(checklist) || checklist.length === 0) return null;
+  return toJson(
+    checklist.map((item) => ({
+      id: item.id,
+      label: item.label,
+      satisfied: item.satisfied === true,
+    }))
+  );
 }
 
 function isEmpty(value) {
@@ -119,6 +136,8 @@ function formatConversation(messages) {
  * @param {string} [input.phase]        "boundaries" (phase one) or "context" (phase two).
  *                                      Selects the phase-specific instruction when the
  *                                      instruction is the default.
+ * @param {Array}  [input.checklist]    Completion checklist: { id, label, satisfied }.
+ *                                      Shown to the AI as JSON once it exists.
  */
 export function generatePromptSections({
   instruction = DEFAULT_INSTRUCTION,
@@ -127,6 +146,7 @@ export function generatePromptSections({
   uiState = {},
   contextFingerprint = null,
   phase = null,
+  checklist = [],
 } = {}) {
   const contextBlock = buildContextPackage(context);
 
@@ -141,6 +161,7 @@ export function generatePromptSections({
       : contextBlock,
     conversation: formatConversation(messages),
     uiState: uiStateBlock,
+    checklist: formatChecklist(checklist),
     availableComponents: toJson(buildComponentCatalog()),
     responseSchema: [
       "Fields:",
@@ -187,6 +208,14 @@ export function generatePrompt(input = {}) {
     "## CONVERSATION SO FAR",
     sections.conversation,
     "",
+    ...(sections.checklist
+      ? [
+          "## CHECKLIST",
+          "These are the items to settle before the final document. Mark an item satisfied with checklist_updates once the user's response settles it.",
+          sections.checklist,
+          "",
+        ]
+      : []),
     "## CURRENT UI STATE (values the user has entered)",
     sections.uiState,
     "",

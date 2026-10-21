@@ -277,6 +277,83 @@ body {
   border-color: var(--accent);
 }
 
+/* Completion checklist shown once phase one has defined it. */
+.checklist-progress {
+  flex-shrink: 0;
+  max-height: 160px;
+  margin: 8px 16px 0;
+  padding: 8px 12px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.checklist-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.checklist-count {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.checklist-mark {
+  flex-shrink: 0;
+  width: 1.2em;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.checklist-item-done .checklist-mark {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.checklist-item-done .checklist-label {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ---------- Schema form ---------- */
 
 .schema-form {

@@ -30,14 +30,23 @@ export const PROMPT_INPUT_SOURCES = Object.freeze({
  * @param {object} [stores.context]      Context store (Context Snapshot).
  * @param {object} [stores.uiState]      UI state store.
  * @param {string} [stores.phase]        Current phase: "boundaries" or "context".
+ * @param {Array}  [stores.checklist]    Checklist store: { id, label, satisfied } items.
  */
-export function buildPromptInput({ instruction, messages, context, uiState, phase } = {}) {
+export function buildPromptInput({
+  instruction,
+  messages,
+  context,
+  uiState,
+  phase,
+  checklist,
+} = {}) {
   return {
     instruction,
     messages,
     context,
     uiState,
     phase,
+    checklist,
   };
 }
 

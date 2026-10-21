@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import SchemaForm from "../renderer/SchemaForm.jsx";
+import ChecklistProgress from "./ChecklistProgress.jsx";
 import {
   CONVERSATION_PHASE_CONTEXT,
   isNexusMessage,
@@ -21,6 +22,7 @@ const PHASE_LABELS = Object.freeze({
  *   onUiStateChange - (id, value) => void
  *   isComplete      - true once the conversation has terminated; input is disabled
  *   phase           - "boundaries" (phase one) or "context" (phase two)
+ *   checklist       - [{ id, label, satisfied }]; shown once the AI has defined it
  *
  * Nexus is the interface, not the AI: its own lines (the welcome message) are
  * labelled "Nexus", and replies the user pasted in from the external AI are
@@ -38,6 +40,7 @@ export default function ConversationPanel({
   onUiStateChange,
   isComplete = false,
   phase = "boundaries",
+  checklist = [],
 }) {
   const [draft, setDraft] = useState("");
   const endRef = useRef(null);
@@ -79,6 +82,8 @@ export default function ConversationPanel({
           {PHASE_LABELS[phase] ?? PHASE_LABELS.boundaries}
         </div>
       )}
+
+      <ChecklistProgress checklist={checklist} />
 
       <div className="panel-body message-scroll">
         <ul className="message-list" aria-live="polite">

@@ -351,6 +351,244 @@ describe("all three stores feed the prompt", () => {
   });
 });
 
+describe("checklist", () => {
+  const ITEMS = [
+    { id: "audience", label: "Who the document is for" },
+    { id: "scope", label: "What the document covers" },
+  ];
+
+  function finishPhaseOne(result, items = ITEMS) {
+    return submit(result, makeResponse({ phase_complete: true, checklist: items }));
+  }
+
+  it("starts with an empty checklist", () => {
+    const { result } = setup();
+    expect(result.current.checklist).toEqual([]);
+  });
+
+  it("creates the checklist from the response that completes phase one", () => {
+    const { result } = setup();
+
+    expect(finishPhaseOne(result)).toBe(true);
+
+    expect(result.current.phase).toBe("context");
+    expect(result.current.checklist).toEqual([
+      { id: "audience", label: "Who the document is for", satisfied: false },
+      { id: "scope", label: "What the document covers", satisfied: false },
+    ]);
+    expect(result.current.isComplete).toBe(false);
+  });
+
+  it("ignores a checklist sent without phase_complete", () => {
+    const { result } = setup();
+
+    submit(result, makeResponse({ checklist: ITEMS }));
+
+    expect(result.current.phase).toBe("boundaries");
+    expect(result.current.checklist).toEqual([]);
+  });
+
+  it("does not create a checklist when phase one completes without one", () => {
+    const { result } = setup();
+
+    submit(result, makeResponse({ phase_complete: true }));
+
+    expect(result.current.phase).toBe("context");
+    expect(result.current.checklist).toEqual([]);
+    expect(result.current.isComplete).toBe(false);
+  });
+
+  it("does not replace the checklist when a later response sends another", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+
+    submit(
+      result,
+      makeResponse({
+        phase_complete: true,
+        checklist: [{ id: "other", label: "Something else" }],
+      })
+    );
+
+    expect(result.current.checklist.map((item) => item.id)).toEqual(["audience", "scope"]);
+  });
+
+  it("marks an item satisfied from checklist_updates", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+
+    submit(
+      result,
+      makeResponse({ checklist_updates: [{ id: "audience", satisfied: true }] })
+    );
+
+    expect(result.current.checklist.map((item) => item.satisfied)).toEqual([true, false]);
+    expect(result.current.isComplete).toBe(false);
+  });
+
+  it("ignores updates for ids that are not on the checklist", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+    const before = result.current.checklist;
+
+    submit(result, makeResponse({ checklist_updates: [{ id: "unknown", satisfied: true }] }));
+
+    expect(result.current.checklist).toBe(before);
+    expect(result.current.isComplete).toBe(false);
+  });
+
+  it("leaves the checklist untouched when the response is invalid", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+    const before = result.current.checklist;
+
+    const ok = submit(
+      result,
+      makeResponse({ checklist_updates: [{ id: "audience", satisfied: "yes" }] })
+    );
+
+    expect(ok).toBe(false);
+    expect(result.current.checklist).toBe(before);
+  });
+
+  it("completes the conversation automatically once every item is satisfied", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+
+    submit(
+      result,
+      makeResponse({
+        checklist_updates: [
+          { id: "audience", satisfied: true },
+          { id: "scope", satisfied: true },
+        ],
+      })
+    );
+
+    expect(result.current.isComplete).toBe(true);
+    expect(result.current.conversationStatus).toBe("complete");
+  });
+
+  it("completes once the last item is satisfied across several responses", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+
+    submit(result, makeResponse({ checklist_updates: [{ id: "audience", satisfied: true }] }));
+    expect(result.current.isComplete).toBe(false);
+
+    submit(result, makeResponse({ checklist_updates: [{ id: "scope", satisfied: true }] }));
+    expect(result.current.isComplete).toBe(true);
+  });
+
+  it("does not complete if the checklist was defined already satisfied-free and has no items", () => {
+    const { result } = setup();
+    submit(result, makeResponse({ phase_complete: true, checklist: [] }));
+
+    submit(result, makeResponse({ checklist_updates: [{ id: "audience", satisfied: true }] }));
+
+    expect(result.current.isComplete).toBe(false);
+  });
+
+  it("accepts no further responses once the checklist completes the conversation", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+    submit(
+      result,
+      makeResponse({
+        checklist_updates: [
+          { id: "audience", satisfied: true },
+          { id: "scope", satisfied: true },
+        ],
+      })
+    );
+    const messages = result.current.messages;
+
+    const ok = submit(result, makeResponse());
+
+    expect(ok).toBe(false);
+    expect(result.current.messages).toBe(messages);
+  });
+
+  it("still completes on conversation_complete before the checklist is satisfied", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+
+    submit(
+      result,
+      makeResponse({ next_action: "complete", conversation_complete: true, components: [] })
+    );
+
+    expect(result.current.isComplete).toBe(true);
+    expect(result.current.checklist.every((item) => item.satisfied === false)).toBe(true);
+  });
+
+  it("shows the checklist in the prompt only once it exists", () => {
+    const { result } = setup();
+    expect(result.current.prompt).not.toContain("## CHECKLIST");
+    expect(result.current.promptSections.checklist).toBeNull();
+
+    finishPhaseOne(result);
+
+    expect(result.current.prompt).toContain("## CHECKLIST");
+    expect(result.current.prompt).toContain("Who the document is for");
+    expect(JSON.parse(result.current.promptSections.checklist)).toEqual(result.current.checklist);
+  });
+
+  it("shows updated satisfied flags in the next prompt", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+
+    submit(result, makeResponse({ checklist_updates: [{ id: "scope", satisfied: true }] }));
+
+    const parsed = JSON.parse(result.current.promptSections.checklist);
+    expect(parsed.find((item) => item.id === "scope").satisfied).toBe(true);
+    expect(parsed.find((item) => item.id === "audience").satisfied).toBe(false);
+  });
+
+  it("does not change the context or UI state when the checklist changes", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+    const { context, uiState } = result.current;
+
+    submit(
+      result,
+      makeResponse({
+        components: [],
+        checklist_updates: [{ id: "audience", satisfied: true }],
+      })
+    );
+
+    expect(result.current.context).toBe(context);
+    expect(result.current.contextFingerprint).toBeDefined();
+    expect(JSON.stringify(result.current.context)).not.toContain("Who the document is for");
+    expect(JSON.stringify(uiState)).not.toContain("audience");
+  });
+
+  it("clears the checklist on reset", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+    expect(result.current.checklist.length).toBeGreaterThan(0);
+
+    act(() => result.current.resetSession());
+
+    expect(result.current.checklist).toEqual([]);
+    expect(result.current.phase).toBe("boundaries");
+    expect(result.current.prompt).not.toContain("## CHECKLIST");
+  });
+
+  it("lets a new session define a fresh checklist after a reset", () => {
+    const { result } = setup();
+    finishPhaseOne(result);
+    act(() => result.current.resetSession());
+
+    finishPhaseOne(result, [{ id: "tone", label: "The tone of the document" }]);
+
+    expect(result.current.checklist).toEqual([
+      { id: "tone", label: "The tone of the document", satisfied: false },
+    ]);
+  });
+});
+
 describe("resetSession clears each store", () => {
   function fillAllStores(result) {
     submit(
