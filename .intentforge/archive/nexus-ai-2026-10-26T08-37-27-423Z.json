@@ -1,0 +1,48 @@
+{
+  "version": "v1.0",
+  "project_id": "f224314f-66cc-46fd-a126-8f228ee295e8",
+  "name": "nexus-ai",
+  "archivedAt": 1793003847423,
+  "nodes": [
+    {
+      "roadmap_node_id": "rmn_658ea6e245a58749b4dc1bee",
+      "project_id": "f224314f-66cc-46fd-a126-8f228ee295e8",
+      "parent_roadmap_node_id": null,
+      "type": "version",
+      "depth": 0,
+      "locked": true,
+      "status": "not_started",
+      "order": 0,
+      "feature_id": null,
+      "title": "v1",
+      "summary": "",
+      "detail": "",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-26T08:36:55.343Z",
+      "updatedAt": "2026-10-26T08:36:55.481Z"
+    },
+    {
+      "roadmap_node_id": "rmn_3a310ddbd2128d12ecb91908",
+      "project_id": "f224314f-66cc-46fd-a126-8f228ee295e8",
+      "parent_roadmap_node_id": "rmn_658ea6e245a58749b4dc1bee",
+      "type": "goal",
+      "depth": 1,
+      "locked": false,
+      "status": "not_started",
+      "order": 0,
+      "feature_id": null,
+      "title": "Make project deployable via Deploy-Manager",
+      "summary": "Update the nexus-ai project so it can be deployed through the local app \"Deploy-Manager\".",
+      "detail": "",
+      "linked_element_ids": [],
+      "finalized": false,
+      "blocked_by": [],
+      "notes": "",
+      "createdAt": "2026-10-26T08:36:55.481Z",
+      "updatedAt": "2026-10-26T08:36:55.481Z"
+    }
+  ]
+}
